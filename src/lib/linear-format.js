@@ -1,3 +1,4 @@
+import { formatCommandArg } from "./cli-helpers.js";
 import { asArray } from "./mcp-tools.js";
 
 const FIELD_HINTS = {
@@ -211,6 +212,6 @@ function formattedPreview(value, limit) {
 }
 
 function rewriteMcpHints(text, id) {
-  const replacement = id ? `run \`linear-axi documents view ${id} --full\`` : "run `linear-axi documents view <id> --full`";
-  return text.replace(/use `get_document`/g, replacement);
+  const hintId = id ? formatCommandArg(id) : "<id>";
+  return text.replace(/use `get_document`/g, `run \`linear-axi documents view ${hintId} --full\``);
 }
