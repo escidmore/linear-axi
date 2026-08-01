@@ -11,7 +11,7 @@ test("skill markdown is installable and points agents at npx linear-axi", () => 
   assert.match(skill, /user-invocable: false/);
   assert.match(skill, /npx -y linear-axi/);
   assert.match(skill, /auth login/);
-  assert.match(skill, /linear-axi update --check/);
+  assert.doesNotMatch(skill, /linear-axi update/);
   assert.doesNotMatch(skill, /gh-axi/);
 });
 

@@ -46,8 +46,6 @@ npm link
 
 `linear-axi` requires Node.js 20 or newer.
 
-For global installs, run `linear-axi update --check` to see whether a newer release is available, or `linear-axi update` to upgrade.
-
 ## Configuration
 
 By default, the CLI reads the Linear MCP URL from `[mcp_servers.linear].url` in `~/.codex/config.toml` and falls back to `https://mcp.linear.app/mcp` (current official remote MCP by linear).
@@ -98,8 +96,6 @@ linear-axi milestones create --project "Roadmap" --name "Beta"
 linear-axi milestones update --project "Roadmap" --id <id> --targetDate <yyyy-mm-dd>
 linear-axi cycles list --team ENG --type current
 linear-axi statuses list --team ENG
-linear-axi update --check
-linear-axi update
 ```
 
 ## Output behavior
