@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { renderToon } from "../src/format.js";
-import { compactIssues } from "../src/lib/linear-format.js";
+import { formatCommandArg } from "../src/lib/cli-helpers.js";
+import { compactDocumentDetail, compactIssues } from "../src/lib/linear-format.js";
 
 test("renders tabular arrays with counts", () => {
   assert.equal(
@@ -38,4 +39,18 @@ test("compact issue sorting preserves input order within the same status", () =>
     ]).map((issue) => issue.id),
     ["LIN-2", "LIN-1"],
   );
+});
+
+test("formatCommandArg shell-quotes ids with metacharacters", () => {
+  assert.equal(formatCommandArg("LIN-123"), "LIN-123");
+  assert.equal(formatCommandArg("DOC-1; touch pwned"), "'DOC-1; touch pwned'");
+  assert.equal(formatCommandArg("a'b"), "'a'\\''b'");
+});
+
+test("document hint quotes a server-controlled id with shell metacharacters", () => {
+  const detail = compactDocumentDetail(
+    { title: "Spec", content: "next, use `get_document` for detail" },
+    "DOC-1; rm file",
+  );
+  assert.match(detail.document.content, /view 'DOC-1; rm file' --full/);
 });

@@ -89,8 +89,8 @@ export async function ensureIssueDoesNotExist(title, team, runtime) {
     name: (issue) => issue.title,
     id: (issue) => issue.identifier ?? issue.id ?? "<id>",
     help: (id) => [
-      `Run \`linear-axi issues view ${id}\` to inspect the existing issue`,
-      `Run \`linear-axi issues update --id ${id} --state "<state>"\` to edit it`,
+      `Run \`linear-axi issues view ${formatCommandArg(id)}\` to inspect the existing issue`,
+      `Run \`linear-axi issues update --id ${formatCommandArg(id)} --state "<state>"\` to edit it`,
       `Run \`linear-axi issues create --title ${formatCommandArg(`${title} copy`)} --team ${formatCommandArg(team)}\` to create a distinct issue`,
     ],
   });
@@ -128,7 +128,7 @@ export async function ensureProjectDoesNotExist(name, team, runtime) {
     id: (project) => project.id ?? project.slugId ?? "<id>",
     help: (id) => [
       `Run \`linear-axi projects list --query ${formatCommandArg(name)} --full\` to inspect matching projects`,
-      `Run \`linear-axi projects update --id ${id} --summary "Updated scope"\` to edit it`,
+      `Run \`linear-axi projects update --id ${formatCommandArg(id)} --summary "Updated scope"\` to edit it`,
       `Run \`linear-axi projects create --name ${formatCommandArg(`${name} copy`)} --team ${formatCommandArg(team)}\` to create a distinct project`,
     ],
   });
