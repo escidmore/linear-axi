@@ -57,8 +57,9 @@ export async function hasTool(runtime, name) {
 
 export function mutationData(result, help) {
   const data = extractData(result);
-  if (data && typeof data === "object" && Object.keys(data).length === 1 && typeof data.text === "string") {
-    throw new AxiError("operational", data.text, help);
+  const message = [data?.text, data?.error, data?.message].find((value) => typeof value === "string");
+  if (result?.isError || (data && typeof data === "object" && Object.keys(data).length === 1 && typeof data.text === "string")) {
+    throw new AxiError("operational", message ?? "Linear MCP tool returned an error", help);
   }
   return data;
 }

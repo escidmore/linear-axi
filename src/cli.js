@@ -13,6 +13,7 @@ import { topHelp } from "./commands/help.js";
 import { homeCommand } from "./commands/home.js";
 import { initCommand } from "./commands/init.js";
 import { issueCommand } from "./commands/issues.js";
+import { labelCommand } from "./commands/labels.js";
 import { listResourceCommand } from "./commands/list-resource.js";
 import { milestoneCommand } from "./commands/milestones.js";
 import { projectCommand } from "./commands/projects.js";
@@ -46,6 +47,8 @@ const COMMANDS = {
   document: documentCommand,
   projects: projectCommand,
   project: projectCommand,
+  labels: labelCommand,
+  label: labelCommand,
 };
 
 export async function main(args, context) {

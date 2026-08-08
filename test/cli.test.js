@@ -12,7 +12,7 @@ const packageVersion = JSON.parse(
 test("top help exposes Linear resource commands", async () => {
   const output = await run(["--help"], runtime({}));
 
-  assert.match(output, /issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels/);
+  assert.match(output, /commands\[13\]:\n  \(none\)=dashboard, init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels/);
   assert.doesNotMatch(output, /releases/);
   assert.doesNotMatch(output, /statuses save/);
   assert.doesNotMatch(output, /statuses delete/);
@@ -1546,6 +1546,7 @@ test("explicit create commands reject id before MCP calls", async () => {
     [["projects", "create", "--id", "p1", "--name", "Roadmap", "--team", "ENG"], /creating a project does not accept --id/],
     [["documents", "create", "--id", "doc1", "--title", "Spec"], /creating a document does not accept --id/],
     [["milestones", "create", "--project", "Roadmap", "--id", "m1", "--name", "Beta"], /creating a milestone does not accept --id/],
+    [["labels", "create", "--id", "l1", "--name", "Bug"], /creating a label does not accept --id/],
   ]) {
     let called = false;
 
@@ -1611,6 +1612,236 @@ test("documents create returns compact mutation output", async () => {
   assert.doesNotMatch(output, /extra/);
   assert.doesNotMatch(output, /help\[/);
   assert.doesNotMatch(output, /linear-axi documents view doc1/);
+});
+
+test("labels list keeps using the issue label list tool", async () => {
+  let seen;
+  const output = await run(
+    ["labels", "list", "--team", "ENG"],
+    runtime({
+      listTools: async () => [{ name: "list_issue_labels" }],
+      callTool: async (name, args) => {
+        seen = { name, args };
+        return { structuredContent: { labels: [{ id: "l1", name: "Bug" }] } };
+      },
+    }),
+  );
+
+  assert.deepEqual(seen, { name: "list_issue_labels", args: { team: "ENG", limit: 50 } });
+  assert.match(output, /labels\[1\]\{id,name,state\}:/);
+  assert.match(output, /l1,Bug,""/);
+});
+
+test("labels create wraps create_issue_label and returns compact output", async () => {
+  let seen;
+  const output = await run(
+    ["labels", "create", "--name", "Bug", "--team", "team-1", "--color", "#ff0000", "--isGroup"],
+    runtime({
+      listTools: async () => [{ name: "create_issue_label" }],
+      callTool: async (name, args) => {
+        seen = { name, args };
+        return { structuredContent: { id: "l1", name: "Bug", color: "#ff0000", team: { name: "ENG" }, extra: "hidden" } };
+      },
+    }),
+  );
+
+  assert.deepEqual(seen, {
+    name: "create_issue_label",
+    args: { name: "Bug", color: "#ff0000", isGroup: true, teamId: "team-1" },
+  });
+  assert.match(output, /label:/);
+  assert.match(output, /id: l1/);
+  assert.match(output, /color: "#ff0000"/);
+  assert.match(output, /team: ENG/);
+  assert.doesNotMatch(output, /extra/);
+  assert.doesNotMatch(output, /help\[/);
+});
+
+test("labels create prefers an explicit teamId over --team", async () => {
+  let seen;
+  await run(
+    ["labels", "create", "--name", "Bug", "--team", "ENG", "--teamId", "team-1"],
+    runtime({
+      listTools: async () => [{ name: "create_issue_label" }],
+      callTool: async (name, args) => {
+        seen = { name, args };
+        return { structuredContent: { id: "l1", name: "Bug" } };
+      },
+    }),
+  );
+
+  assert.deepEqual(seen, { name: "create_issue_label", args: { name: "Bug", teamId: "team-1" } });
+});
+
+test("labels update uses update_issue_label and falls back to save_issue_label", async () => {
+  let seen;
+  await run(
+    ["labels", "update", "--id", "l1", "--name", "Regression"],
+    runtime({
+      listTools: async () => [{ name: "update_issue_label" }, { name: "save_issue_label" }],
+      callTool: async (name, args) => {
+        seen = { name, args };
+        return { structuredContent: { id: "l1", name: "Regression" } };
+      },
+    }),
+  );
+
+  assert.deepEqual(seen, { name: "update_issue_label", args: { id: "l1", name: "Regression" } });
+
+  await run(
+    ["labels", "update", "--id", "l1", "--name", "Regression"],
+    runtime({
+      listTools: async () => [{ name: "save_issue_label" }],
+      callTool: async (name, args) => {
+        seen = { name, args };
+        return { structuredContent: { id: "l1", name: "Regression" } };
+      },
+    }),
+  );
+
+  assert.deepEqual(seen, { name: "save_issue_label", args: { id: "l1", name: "Regression" } });
+});
+
+test("labels delete wraps delete_issue_label and confirms the removal", async () => {
+  let seen;
+  const output = await run(
+    ["labels", "delete", "--id", "l1"],
+    runtime({
+      listTools: async () => [{ name: "delete_issue_label" }],
+      callTool: async (name, args) => {
+        seen = { name, args };
+        return { structuredContent: { success: true } };
+      },
+    }),
+  );
+
+  assert.deepEqual(seen, { name: "delete_issue_label", args: { id: "l1" } });
+  assert.match(output, /label:\n {2}id: l1\n {2}status: deleted/);
+});
+
+test("labels delete rejects MCP tool errors", async () => {
+  for (const [result, message] of [
+    [{ content: [{ type: "text", text: "Label could not be deleted" }], isError: true }, /Label could not be deleted/],
+    [{ structuredContent: { error: "permission denied" }, isError: true }, /permission denied/],
+  ]) {
+    await assert.rejects(
+      () => run(
+        ["labels", "delete", "--id", "l1"],
+        runtime({
+          listTools: async () => [{ name: "delete_issue_label" }],
+          callTool: async () => result,
+        }),
+      ),
+      (error) => {
+        assert.equal(error.kind, "operational");
+        assert.equal(error.exitCode, 1);
+        assert.match(error.message, message);
+        assert.ok(error.help.length > 0);
+        return true;
+      },
+    );
+  }
+});
+
+test("label mutations report missing MCP tools without calling them", async () => {
+  let called = false;
+  const client = runtime({
+    listTools: async () => [{ name: "list_issue_labels" }],
+    callTool: async () => {
+      called = true;
+      return {};
+    },
+  });
+
+  await assert.rejects(
+    () => run(["labels", "create", "--name", "Bug"], client),
+    /Linear MCP server does not expose create_issue_label/,
+  );
+  await assert.rejects(
+    () => run(["labels", "update", "--id", "l1", "--name", "Bug"], client),
+    /Linear MCP server does not expose update_issue_label or save_issue_label/,
+  );
+  await assert.rejects(
+    () => run(["labels", "delete", "--id", "l1"], client),
+    /Linear MCP server does not expose delete_issue_label/,
+  );
+
+  assert.equal(called, false);
+});
+
+test("label mutations validate required flags before MCP calls", async () => {
+  for (const [args, message] of [
+    [["labels", "create", "--color", "#ff0000"], /creating a label requires --name/],
+    [["labels", "update", "--name", "Bug"], /updating a label requires --id/],
+    [["labels", "delete"], /deleting a label requires --id/],
+  ]) {
+    let called = false;
+
+    await assert.rejects(
+      () => run(
+        args,
+        runtime({
+          callTool: async () => {
+            called = true;
+            return {};
+          },
+        }),
+      ),
+      (error) => {
+        assert.equal(error.kind, "usage");
+        assert.equal(error.exitCode, 2);
+        assert.match(error.message, message);
+        return true;
+      },
+    );
+
+    assert.equal(called, false);
+  }
+});
+
+test("label mutations reject unknown flags and positionals before MCP calls", async () => {
+  for (const [args, message] of [
+    [["labels", "create", "--name", "Bug", "--colour", "red"], /unknown flag --colour/],
+    [["labels", "create", "Bug", "--name", "Bug"], /unexpected argument: Bug/],
+    [["labels", "update", "--id", "l1", "--colour", "red"], /unknown flag --colour/],
+    [["labels", "update", "l1", "--id", "l1"], /unexpected argument: l1/],
+    [["labels", "delete", "--id", "l1", "--force", "true"], /unknown flag --force/],
+    [["labels", "delete", "l1", "--id", "l1"], /unexpected argument: l1/],
+  ]) {
+    let called = false;
+
+    await assert.rejects(
+      () => run(
+        args,
+        runtime({
+          callTool: async () => {
+            called = true;
+            return {};
+          },
+        }),
+      ),
+      (error) => {
+        assert.equal(error.kind, "usage");
+        assert.equal(error.exitCode, 2);
+        assert.match(error.message, message);
+        assert.ok(error.help.length > 0);
+        return true;
+      },
+    );
+
+    assert.equal(called, false);
+  }
+});
+
+test("label group help summarizes list create update and delete flags", async () => {
+  const output = await run(["labels", "--help"], runtime({}));
+
+  assert.match(output, /usage: linear-axi labels <subcommand> \[flags\]/);
+  assert.match(output, /subcommands\[4\]:\n  list, create, update, delete/);
+  assert.match(output, /flags\{create\}:\n  --name <text> \(required\), --team <team> or --teamId <id> \(omit for a workspace label\)/);
+  assert.match(output, /flags\{update\}:\n  --id <id> \(required\)/);
+  assert.match(output, /flags\{delete\}:\n  --id <id> \(required\)/);
+  assert.match(output, /linear-axi labels delete --id <id>/);
 });
 
 test("projects create wraps create_project and returns compact output", async () => {

@@ -125,6 +125,16 @@ export function compactProjectMutation(project) {
   };
 }
 
+export function compactLabelMutation(label) {
+  return {
+    id: label.id ?? "",
+    name: label.name ?? "",
+    color: label.color ?? "",
+    team: namedValue(label.team),
+    parent: namedValue(label.parent),
+  };
+}
+
 export function compactDocumentMutation(document) {
   return {
     id: document.id ?? "",
