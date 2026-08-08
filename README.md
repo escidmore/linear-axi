@@ -125,6 +125,9 @@ workspace: Acme
 project: Roadmap
 repo: my-repo
 issues: 3 assigned to me in project
+help[2]:
+  Run `linear-axi <command> <subcommand>` — commands: init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels
+  Run `linear-axi --help` to inspect complete command and flag help
 ```
 
 If the saved default project is not found in the authenticated workspace, the dashboard reports the invalid default and suggests searching the current workspace or replacing `.linear-project`. Project-scoped commands fail with the same `VALIDATION_ERROR` before sending the stale project to Linear.
