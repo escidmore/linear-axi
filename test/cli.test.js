@@ -222,6 +222,8 @@ test("home warns when configured project is not in the current workspace", async
   assert.match(output, /error: "The saved default Linear project does not exist in the authenticated workspace: Linear AXI"/);
   assert.match(output, /Run `linear-axi projects list --query 'Linear AXI' --fields id,name,status` to search the current workspace/);
   assert.match(output, /Run `linear-axi init --project "<project>" --force` to update \.linear-project/);
+  assert.match(output, /Run `linear-axi <command> <subcommand>` — commands: init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels/);
+  assert.match(output, /Run `linear-axi --help` to inspect complete command and flag help/);
 });
 
 test("home summarizes project-assigned issues instead of listing rows", async () => {

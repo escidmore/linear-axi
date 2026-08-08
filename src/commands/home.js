@@ -60,6 +60,7 @@ export async function homeCommand(runtime) {
     output.help = [
       `Run \`linear-axi projects list --query ${formatCommandArg(repoProject.project)} --fields id,name,status\` to search the current workspace`,
       'Run `linear-axi init --project "<project>" --force` to update .linear-project',
+      ...DASHBOARD_HELP,
     ];
     return output;
   }
