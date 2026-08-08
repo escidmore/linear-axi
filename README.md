@@ -85,6 +85,10 @@ linear-axi projects update --id <id> --summary "Updated scope"
 linear-axi teams list
 linear-axi users list --query morris
 linear-axi labels list --team ENG
+linear-axi labels create --name "Bug" --team ENG
+linear-axi labels create --name "Area" --isGroup
+linear-axi labels update --id <id> --color "#ff0000"
+linear-axi labels delete --id <id>
 linear-axi comments list --issue LIN-123
 linear-axi comments create --issue LIN-123 --body "Ready for review."
 linear-axi documents view <id>

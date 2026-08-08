@@ -72,6 +72,12 @@ export function groupHelp(name, subcommands) {
     ],
     cycles: ["linear-axi cycles list --team ENG --type current"],
     statuses: ["linear-axi statuses list --team ENG"],
+    labels: [
+      "linear-axi labels list --team ENG",
+      'linear-axi labels create --name "Bug" --team ENG',
+      'linear-axi labels update --id <id> --color "#ff0000"',
+      "linear-axi labels delete --id <id>",
+    ],
   };
   const flags = groupFlagHelp(name);
   return `usage: linear-axi ${name} <subcommand> [flags]
@@ -294,6 +300,44 @@ examples:
 `;
 }
 
+const LABEL_MUTATION_FIELDS_HELP = `  --name <name>
+  --color <hex>
+  --description <text>
+  --team <team>
+  --teamId <team-id>
+  --parent <label-group>
+  --isGroup
+`;
+
+export function labelCreateHelp() {
+  return `usage: linear-axi labels create --name <name> [fields]
+flags:
+${LABEL_MUTATION_FIELDS_HELP}examples:
+  linear-axi labels create --name "Bug" --team ENG
+  linear-axi labels create --name "Area" --isGroup
+notes:
+  omit --team and --teamId to create a workspace label.
+`;
+}
+
+export function labelUpdateHelp() {
+  return `usage: linear-axi labels update --id <id> [fields]
+flags:
+  --id <id>
+${LABEL_MUTATION_FIELDS_HELP}examples:
+  linear-axi labels update --id <id> --color "#ff0000"
+`;
+}
+
+export function labelDeleteHelp() {
+  return `usage: linear-axi labels delete --id <id>
+flags:
+  --id <id>
+examples:
+  linear-axi labels delete --id <id>
+`;
+}
+
 export function issueViewHelp() {
   return `usage: linear-axi issues view <id> [--full]
 examples:
@@ -393,6 +437,12 @@ const GROUP_FLAG_HELP = {
   comments: [
     "flags{list}:\n  --issue <id> (required), --limit <n> (default 50), --cursor <cursor>, --full",
     "flags{create}:\n  --issue <id> (required), --body <text> or --body-file <path> (required)",
+  ],
+  labels: [
+    "flags{list}:\n  --team <team>, --name <name>, --query <text>, --limit <n> (default 50), --fields <a,b,c>, --full",
+    "flags{create}:\n  --name <text> (required), --team <team> or --teamId <id> (omit for a workspace label), --color <hex>, --description <text>, --parent <label-group>, --isGroup",
+    "flags{update}:\n  --id <id> (required), --name <text>, --color <hex>, --description <text>, --parent <label-group>, --team <team> or --teamId <id>, --isGroup",
+    "flags{delete}:\n  --id <id> (required)",
   ],
 };
 
