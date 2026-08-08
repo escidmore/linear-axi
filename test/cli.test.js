@@ -1719,6 +1719,24 @@ test("labels delete wraps delete_issue_label and confirms the removal", async ()
   assert.match(output, /label:\n {2}id: l1\n {2}status: deleted/);
 });
 
+test("labels delete rejects MCP tool errors", async () => {
+  await assert.rejects(
+    () => run(
+      ["labels", "delete", "--id", "l1"],
+      runtime({
+        listTools: async () => [{ name: "delete_issue_label" }],
+        callTool: async () => ({ content: [{ type: "text", text: "Label could not be deleted" }], isError: true }),
+      }),
+    ),
+    (error) => {
+      assert.equal(error.kind, "operational");
+      assert.equal(error.exitCode, 1);
+      assert.match(error.message, /Label could not be deleted/);
+      return true;
+    },
+  );
+});
+
 test("label mutations report missing MCP tools without calling them", async () => {
   let called = false;
   const client = runtime({
@@ -1767,6 +1785,40 @@ test("label mutations validate required flags before MCP calls", async () => {
         assert.equal(error.kind, "usage");
         assert.equal(error.exitCode, 2);
         assert.match(error.message, message);
+        return true;
+      },
+    );
+
+    assert.equal(called, false);
+  }
+});
+
+test("label mutations reject unknown flags and positionals before MCP calls", async () => {
+  for (const [args, message] of [
+    [["labels", "create", "--name", "Bug", "--colour", "red"], /unknown flag --colour/],
+    [["labels", "create", "Bug", "--name", "Bug"], /unexpected argument: Bug/],
+    [["labels", "update", "--id", "l1", "--colour", "red"], /unknown flag --colour/],
+    [["labels", "update", "l1", "--id", "l1"], /unexpected argument: l1/],
+    [["labels", "delete", "--id", "l1", "--force", "true"], /unknown flag --force/],
+    [["labels", "delete", "l1", "--id", "l1"], /unexpected argument: l1/],
+  ]) {
+    let called = false;
+
+    await assert.rejects(
+      () => run(
+        args,
+        runtime({
+          callTool: async () => {
+            called = true;
+            return {};
+          },
+        }),
+      ),
+      (error) => {
+        assert.equal(error.kind, "usage");
+        assert.equal(error.exitCode, 2);
+        assert.match(error.message, message);
+        assert.ok(error.help.length > 0);
         return true;
       },
     );

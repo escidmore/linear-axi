@@ -1,8 +1,8 @@
-import { parseFlags } from "../args.js";
+import { parseFlags, usage } from "../args.js";
 import { renderToon } from "../format.js";
 import { collectKnownArgs, dispatchCommandGroup, rejectIdOnCreate, requireValue } from "../lib/cli-helpers.js";
 import { compactLabelMutation } from "../lib/linear-format.js";
-import { callAvailableTool } from "../lib/mcp-tools.js";
+import { callAvailableTool, mutationData } from "../lib/mcp-tools.js";
 import {
   groupHelp,
   labelCreateHelp,
@@ -49,6 +49,7 @@ async function createLabelCommand(args, runtime) {
   const parsed = parseFlags(args, { boolean: ["help", "isGroup"], example: 'labels create --name "Bug" --team ENG' });
   if (parsed.help) return labelCreateHelp();
   rejectIdOnCreate("label", LABEL_ID_ON_CREATE_HELP, parsed);
+  rejectUnknownLabelInput(parsed, LABEL_MUTATION_FIELDS.filter((name) => name !== "id"), LABEL_CREATE_HELP);
   const toolArgs = labelToolArgs(parsed);
   requireValue(toolArgs.name, "creating a label requires --name", LABEL_CREATE_HELP);
   return saveLabel(toolArgs, runtime, ["create_issue_label"], LABEL_CREATE_HELP);
@@ -57,6 +58,7 @@ async function createLabelCommand(args, runtime) {
 async function updateLabelCommand(args, runtime) {
   const parsed = parseFlags(args, { boolean: ["help", "isGroup"], example: 'labels update --id <id> --name "Bug"' });
   if (parsed.help) return labelUpdateHelp();
+  rejectUnknownLabelInput(parsed, LABEL_MUTATION_FIELDS, LABEL_UPDATE_HELP);
   const toolArgs = labelToolArgs(parsed);
   requireValue(toolArgs.id, "updating a label requires --id", LABEL_UPDATE_HELP);
   return saveLabel(toolArgs, runtime, ["update_issue_label", "save_issue_label"], LABEL_UPDATE_HELP);
@@ -65,9 +67,17 @@ async function updateLabelCommand(args, runtime) {
 async function deleteLabelCommand(args, runtime) {
   const parsed = parseFlags(args, { boolean: ["help"], example: "labels delete --id <id>" });
   if (parsed.help) return labelDeleteHelp();
+  rejectUnknownLabelInput(parsed, ["id"], LABEL_DELETE_HELP);
   requireValue(parsed.id, "deleting a label requires --id", LABEL_DELETE_HELP);
-  await callAvailableTool(runtime, ["delete_issue_label"], { id: parsed.id });
+  const result = await callAvailableTool(runtime, ["delete_issue_label"], { id: parsed.id });
+  if (result?.isError) mutationData(result, LABEL_DELETE_HELP);
   return renderToon({ label: { id: parsed.id, status: "deleted" } });
+}
+
+function rejectUnknownLabelInput(parsed, acceptedFlags, help) {
+  const unknownFlag = Object.keys(parsed).find((name) => name !== "positionals" && !acceptedFlags.includes(name));
+  if (unknownFlag) throw usage(`unknown flag --${unknownFlag}`, help);
+  if (parsed.positionals.length > 0) throw usage(`unexpected argument: ${parsed.positionals[0]}`, help);
 }
 
 function labelToolArgs(parsed) {
