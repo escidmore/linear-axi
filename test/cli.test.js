@@ -102,7 +102,8 @@ test("home uninitialized repo suggests project setup without global issue count"
   assert.match(output, /Run `linear-axi projects list` to find Linear projects/);
   assert.match(output, /Run `linear-axi init --project "<project>"` to bind this repo/);
   assert.match(output, /Run `linear-axi issues list --assignee me --all-projects` to list your assigned issues across Linear/);
-  assert.match(output, /Run `linear-axi <command> <subcommand>` — commands: auth, issues, projects, teams, users, comments, documents/);
+  assert.match(output, /Run `linear-axi <command> <subcommand>` — commands: init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels/);
+  assert.match(output, /Run `linear-axi --help` to inspect complete command and flag help/);
   assert.doesNotMatch(output, /assigned to me$/m);
   assert.doesNotMatch(output, /Global issue/);
 });
@@ -163,7 +164,7 @@ test("home auth errors suggest login before list commands for initialized repos"
   assert.match(output, /workspace: Acme\nproject: Roadmap\n/);
   assert.match(output, /project: Roadmap/);
   assert.match(output, /error: Linear MCP OAuth authorization required/);
-  assert.match(output, /help\[1\]:\n  Run `linear-axi <command> <subcommand>` — commands: auth, issues, projects, teams, users, comments, documents/);
+  assert.match(output, /help\[2\]:\n  Run `linear-axi <command> <subcommand>` — commands: init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels\n  Run `linear-axi --help` to inspect complete command and flag help/);
   assert.doesNotMatch(output, /linear-axi init --project/);
   assert.doesNotMatch(output, /issues list --assignee me --limit 50/);
 });
@@ -189,7 +190,8 @@ test("home project uses .linear-project when configured", async () => {
   assert.match(output, /project: Roadmap/);
   assert.match(output, /issues: 0 assigned to me in project/);
   assert.doesNotMatch(output, /issues\[0\]/);
-  assert.match(output, /help\[1\]:/);
+  assert.match(output, /help\[2\]:/);
+  assert.match(output, /Run `linear-axi --help` to inspect complete command and flag help/);
 });
 
 test("home warns when configured project is not in the current workspace", async () => {

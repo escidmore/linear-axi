@@ -5,6 +5,11 @@ import { asArray, callAvailableTool, extractData } from "../lib/mcp-tools.js";
 import { extractWorkspaceName, readRepoProject, validateRepoProject } from "../lib/repo-project.js";
 import { mcpErrorMessage, workspaceName } from "./shared.js";
 
+const DASHBOARD_HELP = [
+  "Run `linear-axi <command> <subcommand>` — commands: init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels",
+  "Run `linear-axi --help` to inspect complete command and flag help",
+];
+
 export async function homeCommand(runtime) {
   let issueCount = 0;
   let issueMore = false;
@@ -25,7 +30,7 @@ export async function homeCommand(runtime) {
       "Run `linear-axi projects list` to find Linear projects",
       'Run `linear-axi init --project "<project>"` to bind this repo',
       "Run `linear-axi issues list --assignee me --all-projects` to list your assigned issues across Linear",
-      "Run `linear-axi <command> <subcommand>` — commands: auth, issues, projects, teams, users, comments, documents",
+      ...DASHBOARD_HELP,
     ];
     return output;
   }
@@ -67,7 +72,7 @@ export async function homeCommand(runtime) {
   }
 
   output.help = [
-    "Run `linear-axi <command> <subcommand>` — commands: auth, issues, projects, teams, users, comments, documents",
+    ...DASHBOARD_HELP,
   ];
 
   return output;
