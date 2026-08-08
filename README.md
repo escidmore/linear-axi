@@ -114,7 +114,7 @@ workspace: Acme
 project: not initialized
 repo: my-repo
 status: No default Linear project is configured for this repository
-help[4]: Run `linear-axi projects list` to find Linear projects,"Run `linear-axi init --project \"<project>\"` to bind this repo",Run `linear-axi issues list --assignee me --all-projects` to list your assigned issues across Linear,"Run `linear-axi <command> <subcommand>` — commands: auth, issues, projects, teams, users, comments, documents"
+help[5]: Run `linear-axi projects list` to find Linear projects,"Run `linear-axi init --project \"<project>\"` to bind this repo",Run `linear-axi issues list --assignee me --all-projects` to list your assigned issues across Linear,"Run `linear-axi <command> <subcommand>` — commands: init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels",Run `linear-axi --help` to inspect complete command and flag help
 ```
 
 After initialization, the dashboard shows the configured repo project plus a project-scoped count of issues assigned to you instead of listing issue rows.
