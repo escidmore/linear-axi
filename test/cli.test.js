@@ -1720,21 +1720,27 @@ test("labels delete wraps delete_issue_label and confirms the removal", async ()
 });
 
 test("labels delete rejects MCP tool errors", async () => {
-  await assert.rejects(
-    () => run(
-      ["labels", "delete", "--id", "l1"],
-      runtime({
-        listTools: async () => [{ name: "delete_issue_label" }],
-        callTool: async () => ({ content: [{ type: "text", text: "Label could not be deleted" }], isError: true }),
-      }),
-    ),
-    (error) => {
-      assert.equal(error.kind, "operational");
-      assert.equal(error.exitCode, 1);
-      assert.match(error.message, /Label could not be deleted/);
-      return true;
-    },
-  );
+  for (const [result, message] of [
+    [{ content: [{ type: "text", text: "Label could not be deleted" }], isError: true }, /Label could not be deleted/],
+    [{ structuredContent: { error: "permission denied" }, isError: true }, /permission denied/],
+  ]) {
+    await assert.rejects(
+      () => run(
+        ["labels", "delete", "--id", "l1"],
+        runtime({
+          listTools: async () => [{ name: "delete_issue_label" }],
+          callTool: async () => result,
+        }),
+      ),
+      (error) => {
+        assert.equal(error.kind, "operational");
+        assert.equal(error.exitCode, 1);
+        assert.match(error.message, message);
+        assert.ok(error.help.length > 0);
+        return true;
+      },
+    );
+  }
 });
 
 test("label mutations report missing MCP tools without calling them", async () => {
