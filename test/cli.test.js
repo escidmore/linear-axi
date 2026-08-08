@@ -12,7 +12,7 @@ const packageVersion = JSON.parse(
 test("top help exposes Linear resource commands", async () => {
   const output = await run(["--help"], runtime({}));
 
-  assert.match(output, /issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels/);
+  assert.match(output, /commands\[13\]:\n  \(none\)=dashboard, init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels/);
   assert.doesNotMatch(output, /releases/);
   assert.doesNotMatch(output, /statuses save/);
   assert.doesNotMatch(output, /statuses delete/);

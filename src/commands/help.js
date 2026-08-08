@@ -3,7 +3,7 @@ import { DEFAULT_LIMIT, PROJECT_SCOPED_LIST_ALIASES } from "./shared.js";
 
 export function topHelp() {
   return `usage: linear-axi [command] [args] [flags]
-commands[12]:
+commands[13]:
   (none)=dashboard, init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels
 flags[3]:
   --help, -h, -v/-V/--version

@@ -34,7 +34,7 @@ Use linear-axi whenever a task touches Linear: listing, viewing, creating, or up
 ## Commands
 
 ```
-commands[12]:
+commands[13]:
   (none)=dashboard, init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels
 ```
 
