@@ -360,6 +360,10 @@ flags:
   --priority <number>
   --estimate <number>
   --dueDate <yyyy-mm-dd>
+  --blocks <issue> repeatable (issues this blocks)
+  --blockedBy <issue> repeatable (issues blocking this)
+  --relatedTo <issue> repeatable
+  --duplicateOf <issue>
   --description <markdown>
   --description-file <path>
 examples:
@@ -383,10 +387,18 @@ flags:
   --priority <number>
   --estimate <number>
   --dueDate <yyyy-mm-dd>
+  --blocks <issue> repeatable (issues this blocks)
+  --blockedBy <issue> repeatable (issues blocking this)
+  --relatedTo <issue> repeatable
+  --duplicateOf <issue>
+  --removeBlocks <issue> repeatable
+  --removeBlockedBy <issue> repeatable
+  --removeRelatedTo <issue> repeatable
   --description <markdown>
   --description-file <path>
 examples:
   linear-axi issues update --id LIN-123 --state Done
+  linear-axi issues update --id LIN-123 --blockedBy LIN-100 --blockedBy LIN-101
 `;
 }
 
@@ -420,8 +432,8 @@ const GROUP_FLAG_HELP = {
   issues: [
     "flags{list}:\n  --assignee <user>, --state <state>, --team <team>, --project <project>, --all-projects, --query <text>, --label <label>, --limit <n> (default 50), --fields <a,b,c>, --full",
     "flags{view}:\n  --full (show complete description without truncation)",
-    "flags{create}:\n  --title <text> (required), --team <team> (required), --description <markdown> or --description-file <path>, --state <state>, --assignee <user>, --project <project>, --label <label>",
-    "flags{update}:\n  --id <id> (required), --title <text>, --description <markdown> or --description-file <path>, --state <state>, --assignee <user>, --project <project>, --label <label>",
+    "flags{create}:\n  --title <text> (required), --team <team> (required), --description <markdown> or --description-file <path>, --state <state>, --assignee <user>, --project <project>, --label <label>, --blocks <issue>, --blockedBy <issue>, --relatedTo <issue>, --duplicateOf <issue>",
+    "flags{update}:\n  --id <id> (required), --title <text>, --description <markdown> or --description-file <path>, --state <state>, --assignee <user>, --project <project>, --label <label>, --blocks <issue>, --blockedBy <issue>, --relatedTo <issue>, --duplicateOf <issue>, --removeBlocks <issue>, --removeBlockedBy <issue>, --removeRelatedTo <issue>",
   ],
   projects: [
     "flags{list}:\n  --query <text>, --team <team>, --state <state>, --limit <n> (default 50), --fields <a,b,c>, --full",

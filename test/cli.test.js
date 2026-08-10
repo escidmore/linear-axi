@@ -840,6 +840,43 @@ test("repo project default applies to issue creates but not updates", async () =
   assert.doesNotMatch(updateOutput, /help\[/);
 });
 
+test("issue update forwards blocking relations to save_issue", async () => {
+  let seen;
+  const output = await run(
+    ["issues", "update", "--id", "LIN-1", "--blocks", "LIN-2", "--blockedBy", "LIN-3", "--blockedBy", "LIN-4", "--removeBlockedBy", "LIN-5", "--relatedTo", "LIN-6", "--duplicateOf", "LIN-7", "--removeRelatedTo", "LIN-8"],
+    runtime({
+      listTools: async () => [{ name: "get_issue" }],
+      callTool: async (name, args) => {
+        if (name === "get_issue") return { structuredContent: { identifier: "LIN-1", title: "Fix auth" } };
+        seen = { name, args };
+        return { structuredContent: { identifier: "LIN-1", title: "Fix auth" } };
+      },
+    }),
+  );
+
+  assert.deepEqual(seen, {
+    name: "save_issue",
+    args: { id: "LIN-1", blocks: ["LIN-2"], blockedBy: ["LIN-3", "LIN-4"], relatedTo: ["LIN-6"], duplicateOf: "LIN-7", removeBlockedBy: ["LIN-5"], removeRelatedTo: ["LIN-8"] },
+  });
+  assert.doesNotMatch(output, /help\[/);
+});
+
+test("issue create forwards blocking relations to save_issue", async () => {
+  let seen;
+  await run(
+    ["issues", "create", "--title", "Fix auth", "--team", "ENG", "--project", "Roadmap", "--blockedBy", "LIN-3"],
+    runtime({
+      callTool: async (name, args) => {
+        if (name === "list_issues") return { structuredContent: { issues: [] } };
+        seen = { name, args };
+        return { structuredContent: { identifier: "LIN-1", title: "Fix auth" } };
+      },
+    }),
+  );
+
+  assert.deepEqual(seen, { name: "save_issue", args: { title: "Fix auth", team: "ENG", project: "Roadmap", blockedBy: ["LIN-3"] } });
+});
+
 test("issue create requires explicit or initialized project", async () => {
   const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
   await mkdir(join(repo, ".git"));

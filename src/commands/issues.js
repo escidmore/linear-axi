@@ -38,7 +38,15 @@ const ISSUE_MUTATION_FIELDS = [
   "dueDate",
   "estimate",
   "priority",
+  "blocks",
+  "blockedBy",
+  "relatedTo",
+  "duplicateOf",
+  "removeBlocks",
+  "removeBlockedBy",
+  "removeRelatedTo",
 ];
+const ISSUE_ARRAY_FLAGS = ["label", "blocks", "blockedBy", "relatedTo", "removeBlocks", "removeBlockedBy", "removeRelatedTo"];
 const ISSUE_CREATE_HELP = [
   'Run `linear-axi issues create --title "Title" --team "<team>"`',
   'Run `linear-axi issues list --team "<team>" --query "Title"` to check existing issues',
@@ -90,7 +98,7 @@ async function viewIssueCommand(args, runtime) {
 }
 
 async function createIssueCommand(args, runtime) {
-  const parsed = parseFlags(args, { boolean: ["help"], array: ["label"], example: 'issues create --title "Bug" --team ENG' });
+  const parsed = parseFlags(args, { boolean: ["help"], array: ISSUE_ARRAY_FLAGS, example: 'issues create --title "Bug" --team ENG' });
   if (parsed.help) return issueCreateHelp();
   rejectIdOnCreate("issue", ISSUE_ID_ON_CREATE_HELP, parsed);
   const toolArgs = await issueToolArgs(parsed, runtime);
@@ -107,7 +115,7 @@ async function createIssueCommand(args, runtime) {
 }
 
 async function updateIssueCommand(args, runtime) {
-  const parsed = parseFlags(args, { boolean: ["help"], array: ["label"], example: 'issues update --id LIN-123 --state Done' });
+  const parsed = parseFlags(args, { boolean: ["help"], array: ISSUE_ARRAY_FLAGS, example: 'issues update --id LIN-123 --state Done' });
   if (parsed.help) return issueUpdateHelp();
   const toolArgs = await issueToolArgs(parsed, runtime);
   if (!toolArgs.id) await applyRepoProjectDefault(toolArgs, runtime);
