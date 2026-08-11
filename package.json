@@ -18,7 +18,7 @@
     "README.md"
   ],
   "scripts": {
-    "demo": "PATH=\"$PWD/bin:$PATH\" vhs docs/demo.tape",
+    "demo": "vhs docs/demo.tape",
     "check": "node --check bin/linear-axi.js && node --check src/*.js && node --check src/commands/*.js && node --check src/lib/*.js && node --test",
     "prepublishOnly": "npm run check",
     "test": "node --test"
