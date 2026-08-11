@@ -31,13 +31,6 @@ Use linear-axi whenever a task touches Linear: listing, viewing, creating, or up
 4. Add `--fields` for columns, `--cursor` for pagination, and `--full` only when complete content is needed.
 5. Linear operation responses include contextual next-step hints under `help:` when recovery or follow-up is useful - follow them.
 
-## Commands
-
-```
-commands[13]:
-  (none)=dashboard, init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels
-```
-
 When using `npx -y @escidmore/linear-axi`, npx already resolves the package on demand.
 
 Run `npx -y @escidmore/linear-axi --help` for global flags, `npx -y @escidmore/linear-axi <resource> --help` for grouped subcommands, or `npx -y @escidmore/linear-axi <resource> <action> --help` for focused flags.

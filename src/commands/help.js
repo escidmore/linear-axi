@@ -38,56 +38,11 @@ examples:
 }
 
 export function groupHelp(name, subcommands) {
-  const examples = {
-    issues: [
-      "linear-axi issues list --assignee me --all-projects --limit 25",
-      "linear-axi issues view LIN-123",
-      'linear-axi issues create --title "Fix auth" --team ENG',
-      "linear-axi issues update --id LIN-123 --state Done",
-    ],
-    projects: [
-      "linear-axi projects list --limit 25",
-      'linear-axi projects create --name "Roadmap" --team ENG',
-      'linear-axi projects update --id <id> --summary "Updated scope"',
-      'linear-axi issues create --title "Task" --team ENG --project "Roadmap"',
-    ],
-    documents: [
-      "linear-axi documents list --all-projects --limit 25",
-      "linear-axi documents view <id>",
-      'linear-axi documents create --title "Spec" --team ENG --content-file spec.md',
-      'linear-axi documents update --id <id> --content "Updated"',
-    ],
-    comments: [
-      "linear-axi comments list --issue LIN-123",
-      'linear-axi comments create --issue LIN-123 --body "Ready for review."',
-    ],
-    auth: [
-      "linear-axi auth login",
-      "linear-axi auth login --manual",
-      "linear-axi auth finish --code <code>",
-      "linear-axi auth logout",
-    ],
-    milestones: [
-      'linear-axi milestones list --project "Roadmap"',
-      'linear-axi milestones view --project "Roadmap" "Beta"',
-      'linear-axi milestones create --project "Roadmap" --name "Beta"',
-      'linear-axi milestones update --project "Roadmap" --id <id> --targetDate <yyyy-mm-dd>',
-    ],
-    cycles: ["linear-axi cycles list --team ENG --type current"],
-    statuses: ["linear-axi statuses list --team ENG"],
-    labels: [
-      "linear-axi labels list --team ENG",
-      'linear-axi labels create --name "Bug" --team ENG',
-      'linear-axi labels update --id <id> --color "#ff0000"',
-      "linear-axi labels delete --id <id>",
-    ],
-  };
-  const flags = groupFlagHelp(name);
   return `usage: linear-axi ${name} <subcommand> [flags]
 subcommands[${subcommands.length}]:
   ${subcommands.join(", ")}
-${flags ? `${flags}\n` : ""}examples:
-${(examples[name] ?? [`linear-axi ${name} list`]).map((example) => `  ${example}`).join("\n")}
+help:
+  linear-axi ${name} <subcommand> --help
 `;
 }
 
@@ -349,10 +304,7 @@ examples:
 `;
 }
 
-export function issueCreateHelp() {
-  return `usage: linear-axi issues create --title <title> --team <team> [fields]
-flags:
-  --title <title>
+const ISSUE_MUTATION_FIELDS_HELP = `  --title <title>
   --team <team>
   --state <state>
   --assignee <user>
@@ -369,7 +321,12 @@ flags:
   --duplicateOf <issue>
   --description <markdown>
   --description-file <path>
-examples:
+`;
+
+export function issueCreateHelp() {
+  return `usage: linear-axi issues create --title <title> --team <team> [fields]
+flags:
+${ISSUE_MUTATION_FIELDS_HELP}examples:
   linear-axi issues create --title "Fix auth" --team ENG
   linear-axi issues create --title "Task" --team ENG --project "Roadmap"
 `;
@@ -379,26 +336,9 @@ export function issueUpdateHelp() {
   return `usage: linear-axi issues update --id <id> [fields]
 flags:
   --id <id>
-  --title <title>
-  --team <team>
-  --state <state>
-  --assignee <user>
-  --project <project>
-  --cycle <cycle>
-  --parentId <issue-id>
-  --label <label> repeatable
-  --priority <number>
-  --estimate <number>
-  --dueDate <yyyy-mm-dd>
-  --blocks <issue> repeatable (issues this blocks)
-  --blockedBy <issue> repeatable (issues blocking this)
-  --relatedTo <issue> repeatable
-  --duplicateOf <issue>
-  --removeBlocks <issue> repeatable
+${ISSUE_MUTATION_FIELDS_HELP}  --removeBlocks <issue> repeatable
   --removeBlockedBy <issue> repeatable
   --removeRelatedTo <issue> repeatable
-  --description <markdown>
-  --description-file <path>
 examples:
   linear-axi issues update --id LIN-123 --state Done
   linear-axi issues update --id LIN-123 --blockedBy LIN-100 --blockedBy LIN-101
@@ -429,38 +369,4 @@ description: Remove saved Linear MCP OAuth credentials without changing bearer-t
 examples:
   linear-axi auth logout
 `;
-}
-
-const GROUP_FLAG_HELP = {
-  issues: [
-    "flags{list}:\n  --assignee <user>, --state <state>, --team <team>, --project <project>, --all-projects, --query <text>, --label <label>, --limit <n> (default 50), --fields <a,b,c>, --full",
-    "flags{view}:\n  --full (show complete description without truncation)",
-    "flags{create}:\n  --title <text> (required), --team <team> (required), --description <markdown> or --description-file <path>, --state <state>, --assignee <user>, --project <project>, --label <label>, --blocks <issue>, --blockedBy <issue>, --relatedTo <issue>, --duplicateOf <issue>",
-    "flags{update}:\n  --id <id> (required), --title <text>, --description <markdown> or --description-file <path>, --state <state>, --assignee <user>, --project <project>, --label <label>, --blocks <issue>, --blockedBy <issue>, --relatedTo <issue>, --duplicateOf <issue>, --removeBlocks <issue>, --removeBlockedBy <issue>, --removeRelatedTo <issue>",
-  ],
-  projects: [
-    "flags{list}:\n  --query <text>, --team <team>, --state <state>, --limit <n> (default 50), --fields <a,b,c>, --full",
-    "flags{create}:\n  --name <text> (required), --team <team> or --teamId <id> (required), --summary <text>, --description <markdown>, --status <status>, --lead <user>",
-    "flags{update}:\n  --id <id> (required), --name <text>, --team <team> or --teamId <id>, --summary <text>, --description <markdown>, --status <status>, --lead <user>",
-  ],
-  documents: [
-    "flags{list}:\n  --project <project>, --all-projects, --query <text>, --team <team>, --limit <n> (default 50), --fields <a,b,c>, --full",
-    "flags{view}:\n  --full (show complete content without truncation)",
-    "flags{create}:\n  --title <text> (required), --team <team>, --project <project>, --issue <issue>, --content <markdown> or --content-file <path>",
-    "flags{update}:\n  --id <id> (required), --title <text>, --team <team>, --project <project>, --issue <issue>, --content <markdown> or --content-file <path>",
-  ],
-  comments: [
-    "flags{list}:\n  --issue <id> (required), --limit <n> (default 50), --cursor <cursor>, --full",
-    "flags{create}:\n  --issue <id> (required), --body <text> or --body-file <path> (required)",
-  ],
-  labels: [
-    "flags{list}:\n  --team <team>, --name <name>, --query <text>, --limit <n> (default 50), --fields <a,b,c>, --full",
-    "flags{create}:\n  --name <text> (required), --team <team> or --teamId <id> (omit for a workspace label), --color <hex>, --description <text>, --parent <label-group>, --isGroup",
-    "flags{update}:\n  --id <id> (required), --name <text>, --color <hex>, --description <text>, --parent <label-group>, --team <team> or --teamId <id>, --isGroup",
-    "flags{delete}:\n  --id <id> (required)",
-  ],
-};
-
-function groupFlagHelp(name) {
-  return GROUP_FLAG_HELP[name]?.join("\n") ?? "";
 }

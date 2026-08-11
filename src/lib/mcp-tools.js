@@ -4,7 +4,7 @@ export async function callAvailableTool(runtime, candidates, args) {
   const tools = typeof runtime.client.listTools === "function" ? await runtime.client.listTools() : [];
   const names = new Set(tools.map((tool) => tool.name));
   if (names.size > 0 && !candidates.some((candidate) => names.has(candidate))) {
-    throw new ToolUnavailableError(candidates);
+    throw Object.assign(new Error(`Linear MCP server does not expose ${candidates.join(" or ")}`), { toolUnavailable: true });
   }
   const preferred = candidates.find((candidate) => names.has(candidate)) ?? candidates[0];
   const argsFor = typeof args === "function" ? args : () => args;
@@ -62,11 +62,4 @@ export function mutationData(result, help) {
     throw new AxiError("operational", message ?? "Linear MCP tool returned an error", help);
   }
   return data;
-}
-
-class ToolUnavailableError extends Error {
-  constructor(candidates) {
-    super(`Linear MCP server does not expose ${candidates.join(" or ")}`);
-    this.toolUnavailable = true;
-  }
 }

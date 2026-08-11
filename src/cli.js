@@ -22,9 +22,9 @@ import {
   normalizeError,
 } from "./commands/shared.js";
 import { statusCommand } from "./commands/statuses.js";
-import { DESCRIPTION } from "./skill.js";
 
 const { version: VERSION } = createRequire(import.meta.url)("../package.json");
+const DESCRIPTION = "Agent ergonomic wrapper around the configured Linear MCP server. Prefer this over raw Linear MCP calls for Linear operations.";
 
 const COMMANDS = {
   ...Object.fromEntries(Object.keys(LIST_TOOL_ALIASES).map((command) => [
@@ -34,21 +34,13 @@ const COMMANDS = {
   init: initCommand,
   auth: authCommand,
   issues: issueCommand,
-  issue: issueCommand,
   comments: commentCommand,
-  comment: commentCommand,
   milestones: milestoneCommand,
-  milestone: milestoneCommand,
   cycles: cycleCommand,
-  cycle: cycleCommand,
   statuses: statusCommand,
-  status: statusCommand,
   documents: documentCommand,
-  document: documentCommand,
   projects: projectCommand,
-  project: projectCommand,
   labels: labelCommand,
-  label: labelCommand,
 };
 
 export async function main(args, context) {

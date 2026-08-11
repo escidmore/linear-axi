@@ -93,10 +93,6 @@ async function completeLoginWithCallback(authorizationUrl, runtime, parsed) {
 }
 
 async function startOAuthCallbackServer(callbackUrl, timeoutMs, expectedState) {
-  if (callbackUrl.hostname !== "127.0.0.1" && callbackUrl.hostname !== "localhost") {
-    throw usage("OAuth callback must use localhost or 127.0.0.1", ["Run `linear-axi auth login --manual`"]);
-  }
-
   let timeout;
   let settled = false;
   let resolveCode;

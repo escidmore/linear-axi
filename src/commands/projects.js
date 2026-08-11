@@ -4,7 +4,6 @@ import { compactProjectMutation } from "../lib/linear-format.js";
 import { groupHelp, projectCreateHelp, projectUpdateHelp } from "./help.js";
 import { aliasListCommand } from "./list-resource.js";
 import {
-  ensureProjectDoesNotExist,
   ensureProjectExists,
   projectSaveToolArgs,
   renderMutation,
@@ -46,7 +45,6 @@ async function createProjectCommand(args, runtime) {
   rejectIdOnCreate("project", PROJECT_ID_ON_CREATE_HELP, parsed);
   const toolArgs = collectKnownArgs(parsed, PROJECT_MUTATION_FIELDS);
   requireValue(toolArgs.name && (toolArgs.team ?? toolArgs.teamId), "creating a project requires --name and --team", PROJECT_CREATE_HELP);
-  await ensureProjectDoesNotExist(toolArgs.name, toolArgs.team ?? toolArgs.teamId, runtime);
   return saveProject(toolArgs, runtime, ["create_project", "save_project"]);
 }
 

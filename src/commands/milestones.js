@@ -41,10 +41,10 @@ export async function milestoneCommand(args, runtime) {
 async function listMilestonesCommand(args, runtime) {
   const parsed = parseFlags(args, { boolean: ["help", "full"], example: 'milestones list --project "Roadmap"' });
   if (parsed.help) return milestoneListHelp();
-  const toolArgs = await milestoneArgs(parsed, runtime, {
-    fields: ["project"],
-    applyDefaultProject: true,
+  const toolArgs = collectKnownArgs(parsed, ["project"]);
+  await applyRepoProjectDefault(toolArgs, runtime, {
     command: "linear-axi milestones list",
+    requireProject: true,
   });
   if (!toolArgs.project) throw usage("--project is required", ['Run `linear-axi milestones list --project "<project>"`']);
   const result = await runtime.client.callTool("list_milestones", { project: toolArgs.project });
@@ -55,10 +55,10 @@ async function viewMilestoneCommand(args, runtime) {
   const parsed = parseFlags(args, { boolean: ["help"], example: 'milestones view --project "Roadmap" "Beta"' });
   if (parsed.help) return milestoneViewHelp();
   const query = parsed.positionals[0] ?? parsed.query;
-  const toolArgs = await milestoneArgs(parsed, runtime, {
-    fields: ["project"],
-    applyDefaultProject: true,
+  const toolArgs = collectKnownArgs(parsed, ["project"]);
+  await applyRepoProjectDefault(toolArgs, runtime, {
     command: "linear-axi milestones list",
+    requireProject: true,
   });
   if (!toolArgs.project || !query) throw usage("--project and milestone query are required", ['Run `linear-axi milestones view --project "<project>" "<milestone>"`']);
   const result = await runtime.client.callTool("get_milestone", { project: toolArgs.project, query });
@@ -69,10 +69,10 @@ async function createMilestoneCommand(args, runtime) {
   const parsed = parseFlags(args, { boolean: ["help"], example: 'milestones create --project "Roadmap" --name "Beta"' });
   if (parsed.help) return milestoneCreateHelp();
   rejectIdOnCreate("milestone", MILESTONE_ID_ON_CREATE_HELP, parsed);
-  const toolArgs = await milestoneArgs(parsed, runtime, {
-    fields: MILESTONE_MUTATION_FIELDS,
-    applyDefaultProject: true,
+  const toolArgs = collectKnownArgs(parsed, MILESTONE_MUTATION_FIELDS);
+  await applyRepoProjectDefault(toolArgs, runtime, {
     command: "linear-axi milestones create",
+    requireProject: true,
   });
   requireValue(toolArgs.project, "--project is required", MILESTONE_CREATE_HELP);
   requireValue(toolArgs.name, "creating a milestone requires --name", MILESTONE_CREATE_HELP);
@@ -82,22 +82,11 @@ async function createMilestoneCommand(args, runtime) {
 async function updateMilestoneCommand(args, runtime) {
   const parsed = parseFlags(args, { boolean: ["help"], example: 'milestones update --project "Roadmap" --id <id>' });
   if (parsed.help) return milestoneUpdateHelp();
-  const toolArgs = await milestoneArgs(parsed, runtime, { fields: MILESTONE_MUTATION_FIELDS });
+  const toolArgs = collectKnownArgs(parsed, MILESTONE_MUTATION_FIELDS);
   requireValue(toolArgs.project, "--project is required", MILESTONE_CREATE_HELP);
   requireValue(toolArgs.id, "updating a milestone requires --id", MILESTONE_UPDATE_HELP);
   await ensureMilestoneExists(toolArgs.project, toolArgs.id, runtime);
   return saveMilestone(toolArgs, runtime);
-}
-
-async function milestoneArgs(parsed, runtime, options) {
-  const toolArgs = collectKnownArgs(parsed, options.fields);
-  if (options.applyDefaultProject) {
-    await applyRepoProjectDefault(toolArgs, runtime, {
-      command: options.command,
-      requireProject: true,
-    });
-  }
-  return toolArgs;
 }
 
 async function saveMilestone(toolArgs, runtime) {

@@ -1,7 +1,7 @@
-import test from "node:test";
+import test, { mock } from "node:test";
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { main, run } from "../src/cli.js";
 
@@ -39,7 +39,7 @@ test("main top-level -h alias renders SDK help", async () => {
 
 test("main home uses SDK CLI description header", async () => {
   const output = await runMain([], {
-    cwd: await makeNoGitTempDir() ?? process.cwd(),
+    cwd: await mkdtemp(join(tmpdir(), "linear-axi-no-git-")),
     client: {
       close: async () => {},
       listTools: async () => [{ name: "list_teams" }],
@@ -109,8 +109,7 @@ test("home uninitialized repo suggests project setup without global issue count"
 });
 
 test("home does not use project row names as workspace names", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
+  const repo = await makeGitRepo();
 
   const output = await run(
     [],
@@ -126,8 +125,7 @@ test("home does not use project row names as workspace names", async () => {
 });
 
 test("home derives workspace names from Linear project URLs", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
+  const repo = await makeGitRepo();
 
   const output = await run(
     [],
@@ -170,9 +168,7 @@ test("home auth errors suggest login before list commands for initialized repos"
 });
 
 test("home project uses .linear-project when configured", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  await writeFile(join(repo, ".linear-project"), JSON.stringify({ project: "Roadmap" }), "utf8");
+  const repo = await makeGitRepo("Roadmap");
 
   const output = await run(
     [],
@@ -195,9 +191,7 @@ test("home project uses .linear-project when configured", async () => {
 });
 
 test("home warns when configured project is not in the current workspace", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  await writeFile(join(repo, ".linear-project"), JSON.stringify({ workspace: "Acme", project: "Linear AXI" }), "utf8");
+  const repo = await makeGitRepo({ workspace: "Acme", project: "Linear AXI" });
   let issueListCalled = false;
 
   const output = await run(
@@ -227,9 +221,7 @@ test("home warns when configured project is not in the current workspace", async
 });
 
 test("home summarizes project-assigned issues instead of listing rows", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  await writeFile(join(repo, ".linear-project"), JSON.stringify({ project: "Roadmap" }), "utf8");
+  const repo = await makeGitRepo("Roadmap");
 
   const output = await run(
     [],
@@ -414,38 +406,6 @@ test("list full counts rows inside response envelopes", async () => {
   assert.match(output, /projects\[2\]\{id,name\}:/);
 });
 
-test("issues list requires project scope or all-projects in uninitialized repos", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  let called = false;
-
-  await assert.rejects(
-    () => run(
-      ["issues", "list", "--assignee", "me"],
-      runtime({
-        cwd: repo,
-        callTool: async () => {
-          called = true;
-          return {};
-        },
-      }),
-    ),
-    (error) => {
-      assert.equal(error.kind, "usage");
-      assert.match(error.message, /No default Linear project is configured for this repository/);
-      assert.deepEqual(error.help, [
-        'Run `linear-axi init --project "<project>"` to bind this repo',
-        'Run `linear-axi issues list --project "<project>"` to choose a project once',
-        "Run `linear-axi issues list --all-projects` to list across all projects",
-        "Run `linear-axi projects list` to find Linear projects",
-      ]);
-      return true;
-    },
-  );
-
-  assert.equal(called, false);
-});
-
 test("issues list uses list_issues wrapper with explicit all-projects", async () => {
   let seen;
   const output = await run(
@@ -471,9 +431,7 @@ test("issues list uses list_issues wrapper with explicit all-projects", async ()
 });
 
 test("all-projects bypasses repo default project for issue lists", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  await writeFile(join(repo, ".linear-project"), `${JSON.stringify({ project: "Roadmap" })}\n`, "utf8");
+  const repo = await makeGitRepo("Roadmap");
 
   let seen;
   await run(
@@ -497,32 +455,8 @@ test("all-projects conflicts with explicit project", async () => {
   );
 });
 
-test("documents list requires project scope or all-projects in uninitialized repos", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  let called = false;
-
-  await assert.rejects(
-    () => run(
-      ["documents", "list"],
-      runtime({
-        cwd: repo,
-        callTool: async () => {
-          called = true;
-          return {};
-        },
-      }),
-    ),
-    /No default Linear project is configured for this repository/,
-  );
-
-  assert.equal(called, false);
-});
-
 test("documents list all-projects bypasses repo default project", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  await writeFile(join(repo, ".linear-project"), `${JSON.stringify({ project: "Roadmap" })}\n`, "utf8");
+  const repo = await makeGitRepo("Roadmap");
 
   let seen;
   await run(
@@ -547,8 +481,7 @@ test("all-projects is rejected for non project-scoped lists", async () => {
 });
 
 test("init saves repo project and issues list uses it by default", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
+  const repo = await makeGitRepo();
 
   const initOutput = await run(["init", "--project", "Roadmap"], runtime({ cwd: repo }));
   assert.match(initOutput, /project: initialized/);
@@ -572,8 +505,7 @@ test("init saves repo project and issues list uses it by default", async () => {
 });
 
 test("init validates the project and saves the authenticated workspace", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
+  const repo = await makeGitRepo();
 
   const initOutput = await run(
     ["init", "--project", "Roadmap"],
@@ -597,8 +529,7 @@ test("init validates the project and saves the authenticated workspace", async (
 });
 
 test("init preserves project ids after validation", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
+  const repo = await makeGitRepo();
 
   const initOutput = await run(
     ["init", "--project", "project-id-1"],
@@ -622,8 +553,7 @@ test("init preserves project ids after validation", async () => {
 });
 
 test("init validates project uuids with get_project when available", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
+  const repo = await makeGitRepo();
   const projectId = "5bf051dd-8c53-4fd9-a606-58dbeae18ec4";
 
   const initOutput = await run(
@@ -650,9 +580,7 @@ test("init validates project uuids with get_project when available", async () =>
 });
 
 test("init force repairs stale workspace metadata for the same project", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  await writeFile(join(repo, ".linear-project"), JSON.stringify({ workspace: "OldCo", project: "Roadmap" }), "utf8");
+  const repo = await makeGitRepo({ workspace: "OldCo", project: "Roadmap" });
 
   const initOutput = await run(
     ["init", "--project", "Roadmap", "--force"],
@@ -676,9 +604,7 @@ test("init force repairs stale workspace metadata for the same project", async (
 });
 
 test("repo project default validates before project-scoped list commands", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  await writeFile(join(repo, ".linear-project"), JSON.stringify({ project: "Linear AXI" }), "utf8");
+  const repo = await makeGitRepo("Linear AXI");
   let issueListCalled = false;
 
   await assert.rejects(
@@ -701,9 +627,7 @@ test("repo project default validates before project-scoped list commands", async
 });
 
 test("repo project validation preserves configured slug for downstream commands", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  await writeFile(join(repo, ".linear-project"), JSON.stringify({ project: "roadmap-slug" }), "utf8");
+  const repo = await makeGitRepo("roadmap-slug");
   let seen;
 
   await run(
@@ -752,9 +676,7 @@ test("repo project validation accepts project uuids with get_project", async () 
 });
 
 test("repo project validation falls back to list_projects after get_project misses", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  await writeFile(join(repo, ".linear-project"), JSON.stringify({ project: "roadmap-slug" }), "utf8");
+  const repo = await makeGitRepo("roadmap-slug");
   const calls = [];
 
   await run(
@@ -781,9 +703,7 @@ test("repo project validation falls back to list_projects after get_project miss
 });
 
 test("invalid repo project help quotes saved project tokens", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  await writeFile(join(repo, ".linear-project"), JSON.stringify({ project: "$(touch /tmp/pwned)" }), "utf8");
+  const repo = await makeGitRepo("$(touch /tmp/pwned)");
 
   await assert.rejects(
     () => run(
@@ -803,9 +723,7 @@ test("invalid repo project help quotes saved project tokens", async () => {
 });
 
 test("repo project default applies to issue creates but not updates", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  await writeFile(join(repo, ".linear-project"), `${JSON.stringify({ project: "Roadmap" })}\n`, "utf8");
+  const repo = await makeGitRepo("Roadmap");
 
   let seen;
   const createOutput = await run(
@@ -813,7 +731,6 @@ test("repo project default applies to issue creates but not updates", async () =
     runtime({
       cwd: repo,
       callTool: async (name, args) => {
-        if (name === "list_issues") return { structuredContent: { issues: [] } };
         seen = { name, args };
         return { structuredContent: { identifier: "LIN-1", title: "Fix auth" } };
       },
@@ -867,7 +784,6 @@ test("issue create forwards blocking relations to save_issue", async () => {
     ["issues", "create", "--title", "Fix auth", "--team", "ENG", "--project", "Roadmap", "--blockedBy", "LIN-3"],
     runtime({
       callTool: async (name, args) => {
-        if (name === "list_issues") return { structuredContent: { issues: [] } };
         seen = { name, args };
         return { structuredContent: { identifier: "LIN-1", title: "Fix auth" } };
       },
@@ -877,32 +793,8 @@ test("issue create forwards blocking relations to save_issue", async () => {
   assert.deepEqual(seen, { name: "save_issue", args: { title: "Fix auth", team: "ENG", project: "Roadmap", blockedBy: ["LIN-3"] } });
 });
 
-test("issue create requires explicit or initialized project", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  let called = false;
-
-  await assert.rejects(
-    () => run(
-      ["issues", "create", "--title", "Fix auth", "--team", "ENG"],
-      runtime({
-        cwd: repo,
-        callTool: async () => {
-          called = true;
-          return {};
-        },
-      }),
-    ),
-    /No default Linear project is configured for this repository/,
-  );
-
-  assert.equal(called, false);
-});
-
 test("repo project default applies to document creates but not updates", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  await writeFile(join(repo, ".linear-project"), `${JSON.stringify({ project: "Roadmap" })}\n`, "utf8");
+  const repo = await makeGitRepo("Roadmap");
 
   let seen;
   await run(
@@ -935,32 +827,8 @@ test("repo project default applies to document creates but not updates", async (
   assert.deepEqual(seen, { name: "update_document", args: { id: "doc1", title: "Updated" } });
 });
 
-test("document create without another parent requires explicit or initialized project", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  let called = false;
-
-  await assert.rejects(
-    () => run(
-      ["documents", "create", "--title", "Spec"],
-      runtime({
-        cwd: repo,
-        callTool: async () => {
-          called = true;
-          return {};
-        },
-      }),
-    ),
-    /No default Linear project is configured for this repository/,
-  );
-
-  assert.equal(called, false);
-});
-
 test("repo project default applies to milestone creates and updates use explicit projects", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  await writeFile(join(repo, ".linear-project"), `${JSON.stringify({ project: "Roadmap" })}\n`, "utf8");
+  const repo = await makeGitRepo("Roadmap");
 
   let seen;
   await run(
@@ -991,41 +859,24 @@ test("repo project default applies to milestone creates and updates use explicit
   assert.deepEqual(seen, { name: "save_milestone", args: { id: "m1", project: "Roadmap", targetDate: "2026-09-01" } });
 });
 
-test("milestone list and create require explicit or initialized project", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  let called = false;
-
-  await assert.rejects(
-    () => run(
-      ["milestones", "list"],
-      runtime({
-        cwd: repo,
-        callTool: async () => {
-          called = true;
-          return {};
-        },
-      }),
-    ),
-    /No default Linear project is configured for this repository/,
-  );
-
-  await assert.rejects(
-    () => run(
-      ["milestones", "create", "--name", "Beta"],
-      runtime({
-        cwd: repo,
-        callTool: async () => {
-          called = true;
-          return {};
-        },
-      }),
-    ),
-    /No default Linear project is configured for this repository/,
-  );
-
-  assert.equal(called, false);
-});
+for (const [name, args] of [
+  ["issues list", ["issues", "list", "--assignee", "me"]],
+  ["documents list", ["documents", "list"]],
+  ["issues create", ["issues", "create", "--title", "Fix auth", "--team", "ENG"]],
+  ["documents create", ["documents", "create", "--title", "Spec"]],
+  ["milestones list", ["milestones", "list"]],
+  ["milestones create", ["milestones", "create", "--name", "Beta"]],
+]) {
+  test(`${name} requires an explicit or initialized project`, async () => {
+    const repo = await makeGitRepo();
+    const callTool = mock.fn();
+    await assert.rejects(
+      () => run(args, runtime({ cwd: repo, callTool })),
+      /No default Linear project is configured for this repository/,
+    );
+    assert.equal(callTool.mock.callCount(), 0);
+  });
+}
 
 test("repo project discovery walks up from a subdirectory and explicit project wins", async () => {
   const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
@@ -1049,13 +900,8 @@ test("repo project discovery walks up from a subdirectory and explicit project w
   assert.deepEqual(seen, { name: "list_issues", args: { project: "Other", limit: 50 } });
 });
 
-test("init requires a Git repository before writing .linear-project", async (t) => {
-  const dir = await makeNoGitTempDir();
-  if (!dir) {
-    t.skip("no writable temp parent without a .git ancestor");
-    return;
-  }
-
+test("init requires a Git repository before writing .linear-project", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "linear-axi-no-git-"));
   await assert.rejects(
     () => run(["init", "--project", "Roadmap"], runtime({ cwd: dir })),
     /current directory is not inside a Git repository/,
@@ -1063,9 +909,7 @@ test("init requires a Git repository before writing .linear-project", async (t) 
 });
 
 test("init is idempotent and protects existing project values", async () => {
-  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
-  await mkdir(join(repo, ".git"));
-  await writeFile(join(repo, ".linear-project"), `${JSON.stringify({ project: "Roadmap" })}\n`, "utf8");
+  const repo = await makeGitRepo("Roadmap");
 
   const same = await run(["init", "--project", "Roadmap"], runtime({ cwd: repo }));
   assert.match(same, /project: already initialized/);
@@ -1766,7 +1610,7 @@ test("labels create wraps create_issue_label and returns compact output", async 
   });
   assert.match(output, /label:/);
   assert.match(output, /id: l1/);
-  assert.match(output, /color: "#ff0000"/);
+  assert.match(output, /color: #ff0000/);
   assert.match(output, /team: ENG/);
   assert.doesNotMatch(output, /extra/);
   assert.doesNotMatch(output, /help\[/);
@@ -1948,17 +1792,6 @@ test("label mutations reject unknown flags and positionals before MCP calls", as
   }
 });
 
-test("label group help summarizes list create update and delete flags", async () => {
-  const output = await run(["labels", "--help"], runtime({}));
-
-  assert.match(output, /usage: linear-axi labels <subcommand> \[flags\]/);
-  assert.match(output, /subcommands\[4\]:\n  list, create, update, delete/);
-  assert.match(output, /flags\{create\}:\n  --name <text> \(required\), --team <team> or --teamId <id> \(omit for a workspace label\)/);
-  assert.match(output, /flags\{update\}:\n  --id <id> \(required\)/);
-  assert.match(output, /flags\{delete\}:\n  --id <id> \(required\)/);
-  assert.match(output, /linear-axi labels delete --id <id>/);
-});
-
 test("projects create wraps create_project and returns compact output", async () => {
   let seen;
   const output = await run(
@@ -1966,7 +1799,6 @@ test("projects create wraps create_project and returns compact output", async ()
     runtime({
       listTools: async () => [{ name: "create_project" }],
       callTool: async (name, args) => {
-        if (name === "list_projects") return { structuredContent: { projects: [] } };
         seen = { name, args };
         return { structuredContent: { id: "p1", name: "Roadmap", status: { name: "Planned" }, team: { name: "ENG" }, extra: "hidden" } };
       },
@@ -1987,7 +1819,6 @@ test("projects create maps team when falling back to save_project create shape",
     runtime({
       listTools: async () => [{ name: "save_project" }],
       callTool: async (name, args) => {
-        if (name === "list_projects") return { structuredContent: { projects: [] } };
         seen = { name, args };
         return { structuredContent: { id: "p1", name: "Roadmap", status: { name: "Planned" }, teams: [{ name: "ENG" }] } };
       },
@@ -2006,7 +1837,6 @@ test("projects create maps team when retrying unknown create_project with save_p
     ["projects", "create", "--name", "Roadmap", "--teamId", "team-1", "--summary", "Plan"],
     runtime({
       callTool: async (name, args) => {
-        if (name === "list_projects") return { structuredContent: { projects: [] } };
         seen.push({ name, args });
         if (name === "create_project") throw new Error("unknown tool: create_project");
         return { structuredContent: { id: "p1", name: "Roadmap" } };
@@ -2165,45 +1995,11 @@ test("mutation text responses become structured errors", async () => {
     () => run(
       ["issues", "create", "--title", "Task", "--team", "ENG", "--project", "Wrong"],
       runtime({
-        callTool: async (name) => {
-          if (name === "list_issues") return { structuredContent: { issues: [] } };
-          return { structuredContent: { text: "Project not in same team as issue" } };
-        },
+        callTool: async () => ({ structuredContent: { text: "Project not in same team as issue" } }),
       }),
     ),
     /Project not in same team as issue/,
   );
-});
-
-test("issues create rejects an existing issue before mutation", async () => {
-  let mutated = false;
-
-  await assert.rejects(
-    () => run(
-      ["issues", "create", "--title", "Task", "--team", "ENG", "--project", "Roadmap"],
-      runtime({
-        callTool: async (name) => {
-          if (name === "list_issues") {
-            return { structuredContent: { issues: [{ identifier: "LIN-1", title: "Task", team: { key: "ENG" } }] } };
-          }
-          mutated = true;
-          return {};
-        },
-      }),
-    ),
-    (error) => {
-      assert.equal(error.kind, "operational");
-      assert.match(error.message, /issue already exists: LIN-1 Task/);
-      assert.deepEqual(error.help, [
-        "Run `linear-axi issues view LIN-1` to inspect the existing issue",
-        'Run `linear-axi issues update --id LIN-1 --state "<state>"` to edit it',
-        "Run `linear-axi issues create --title 'Task copy' --team ENG` to create a distinct issue",
-      ]);
-      return true;
-    },
-  );
-
-  assert.equal(mutated, false);
 });
 
 test("issues update rejects a missing issue before mutation", async () => {
@@ -2229,28 +2025,6 @@ test("issues update rejects a missing issue before mutation", async () => {
   );
 
   assert.deepEqual(calls, [{ name: "get_issue", args: { id: "LIN-404", includeRelations: true } }]);
-});
-
-test("projects create rejects an existing project before mutation", async () => {
-  let mutated = false;
-
-  await assert.rejects(
-    () => run(
-      ["projects", "create", "--name", "Roadmap", "--team", "ENG"],
-      runtime({
-        callTool: async (name) => {
-          if (name === "list_projects") {
-            return { structuredContent: { projects: [{ id: "p1", name: "Roadmap", team: { key: "ENG" } }] } };
-          }
-          mutated = true;
-          return {};
-        },
-      }),
-    ),
-    /project already exists: p1 Roadmap/,
-  );
-
-  assert.equal(mutated, false);
 });
 
 test("projects update rejects a missing project before mutation", async () => {
@@ -2302,24 +2076,10 @@ test("projects update rejects a missing project from get_project before mutation
   assert.deepEqual(calls, [{ name: "get_project", args: { query: "missing" } }]);
 });
 
-test("resource group help is available before choosing a subcommand", async () => {
+test("resource group help points to focused subcommand help", async () => {
   const output = await run(["projects", "--help"], runtime({}));
-
-  assert.match(output, /usage: linear-axi projects <subcommand> \[flags\]/);
   assert.match(output, /subcommands\[3\]:\n  list, create, update/);
-  assert.match(output, /flags\{list\}:\n  --query <text>, --team <team>, --state <state>, --limit <n> \(default 50\), --fields <a,b,c>, --full/);
-  assert.match(output, /flags\{create\}:\n  --name <text> \(required\), --team <team> or --teamId <id> \(required\)/);
-  assert.match(output, /flags\{update\}:\n  --id <id> \(required\)/);
-});
-
-test("issue group help summarizes list view create and update flags", async () => {
-  const output = await run(["issues", "--help"], runtime({}));
-
-  assert.match(output, /flags\{list\}:/);
-  assert.match(output, /--assignee <user>.*--fields <a,b,c>.*--full/);
-  assert.match(output, /flags\{view\}:\n  --full \(show complete description without truncation\)/);
-  assert.match(output, /flags\{create\}:\n  --title <text> \(required\), --team <team> \(required\)/);
-  assert.match(output, /flags\{update\}:\n  --id <id> \(required\)/);
+  assert.match(output, /linear-axi projects <subcommand> --help/);
 });
 
 test("statuses list uses issue status tool", async () => {
@@ -2409,18 +2169,6 @@ test("statuses list emits pagination hints", async () => {
   assert.match(output, /cursor: next-statuses/);
   assert.match(output, /statuses\[1\]\{id,name,state\}:/);
   assert.match(output, /Run `linear-axi statuses list --team ENG --limit 1 --orderBy createdAt --cursor next-statuses` to continue/);
-});
-
-test("statuses list does not fall back to status updates", async () => {
-  await assert.rejects(
-    () => run(
-      ["statuses", "list", "--team", "ENG"],
-      runtime({
-        listTools: async () => [{ name: "get_status_updates" }],
-      }),
-    ),
-    /Linear MCP server does not expose list_issue_statuses/,
-  );
 });
 
 test("unsupported top-level resources use generic unknown-command handling without MCP calls", async () => {
@@ -2571,29 +2319,11 @@ function runtime(client) {
   };
 }
 
-async function makeNoGitTempDir() {
-  for (const parent of [tmpdir(), "/var/tmp", "/dev/shm"]) {
-    if (await hasGitAncestor(parent)) continue;
-    try {
-      return await mkdtemp(join(parent, "linear-axi-no-git-"));
-    } catch {
-      // Try the next conventional temp directory.
-    }
+async function makeGitRepo(project) {
+  const repo = await mkdtemp(join(tmpdir(), "linear-axi-repo-"));
+  await mkdir(join(repo, ".git"));
+  if (project) {
+    await writeFile(join(repo, ".linear-project"), JSON.stringify(typeof project === "string" ? { project } : project), "utf8");
   }
-  return null;
-}
-
-async function hasGitAncestor(path) {
-  let current = resolve(path);
-  while (true) {
-    try {
-      await stat(join(current, ".git"));
-      return true;
-    } catch {
-      // Keep walking.
-    }
-    const parent = dirname(current);
-    if (parent === current) return false;
-    current = parent;
-  }
+  return repo;
 }

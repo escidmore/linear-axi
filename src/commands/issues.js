@@ -19,7 +19,6 @@ import {
 } from "./help.js";
 import { aliasListCommand } from "./list-resource.js";
 import {
-  ensureIssueDoesNotExist,
   ensureIssueExists,
   renderDetailView,
   renderMutation,
@@ -107,7 +106,6 @@ async function createIssueCommand(args, runtime) {
     requireProject: true,
   });
   requireValue(toolArgs.title && toolArgs.team, "creating an issue requires --title and --team", ISSUE_CREATE_HELP);
-  await ensureIssueDoesNotExist(toolArgs.title, toolArgs.team, runtime);
   return saveIssue(toolArgs, runtime, [
     'Run `linear-axi issues create --title "Title" --team "<team>"`',
     "Run `linear-axi projects list --full` to confirm project/team compatibility",
