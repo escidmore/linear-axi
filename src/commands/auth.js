@@ -66,7 +66,7 @@ async function logoutCommand(args, runtime) {
 
 async function completeLoginWithCallback(authorizationUrl, runtime, parsed) {
   const timeoutMs = parseFiniteNumber("timeout", parsed.timeout ?? 300000);
-  const callbackUrl = new URL("http://127.0.0.1:14566/oauth/callback");
+  const callbackUrl = new URL(runtime.authCallbackUrl ?? "http://127.0.0.1:14566/oauth/callback");
   const expectedState = new URL(authorizationUrl).searchParams.get("state");
   if (!expectedState) {
     throw usage("OAuth authorization URL did not include state", ["Run `linear-axi auth login --manual`"]);
@@ -76,7 +76,7 @@ async function completeLoginWithCallback(authorizationUrl, runtime, parsed) {
   runtime.stdout?.write?.(renderToon({
     auth: "Linear MCP OAuth authorization required",
     url: authorizationUrl,
-    callback: callbackUrl.toString(),
+    callback: server.callbackUrl.toString(),
     help: [
       "Open the URL in a browser to finish automatically",
       "If callback capture fails, rerun `linear-axi auth login --manual`",
@@ -148,12 +148,14 @@ async function startOAuthCallbackServer(callbackUrl, timeoutMs, expectedState) {
     server.once("error", reject);
     server.listen(Number(callbackUrl.port || 80), callbackUrl.hostname, resolve);
   });
+  if (callbackUrl.port === "0") callbackUrl.port = String(server.address().port);
 
   timeout = setTimeout(() => {
     finish(new Error("Timed out waiting for Linear OAuth callback"));
   }, timeoutMs);
 
   return {
+    callbackUrl,
     code,
     close: () => new Promise((resolve) => server.close(resolve)),
   };
