@@ -86,130 +86,36 @@ linear-axi init --project "Roadmap"
 
 ## Commands
 
-The CLI is organized as `linear-axi <resource> <action>`. Internally, each action forwards to the matching Linear MCP tool, then formats the result for agents. The shared AXI runtime owns top-level help, `-h`, version flags, unknown-command handling, the default dashboard frame, and the built-in `update` command. Run `linear-axi --help` for the top-level command list, `linear-axi <resource> --help` for grouped subcommand flags, or `linear-axi <resource> <action> --help` for the focused flag reference.
+The CLI is organized as `linear-axi <resource> <action>`. Each action forwards to the matching Linear MCP tool and formats the result for agents. Run `linear-axi --help` for commands or `linear-axi <resource> <action> --help` for flags.
 
 ```sh
-linear-axi
 linear-axi init --project "Roadmap"
-linear-axi auth login
-linear-axi auth login --manual
-linear-axi auth finish --code <code>
-linear-axi auth logout
 linear-axi issues list --assignee me --limit 25
 linear-axi issues list --assignee me --all-projects
-linear-axi issues list --fields id,title,state,assignee
 linear-axi issues view LIN-123 --full
 linear-axi issues create --title "Fix auth" --team ENG --project "Roadmap"
 linear-axi issues update --id LIN-123 --state Done
 linear-axi projects list --query roadmap
-linear-axi projects create --name "Roadmap" --team ENG
-linear-axi projects update --id <id> --summary "Updated scope"
-linear-axi teams list
-linear-axi users list --query morris
-linear-axi labels list --team ENG
-linear-axi labels create --name "Bug" --team ENG
-linear-axi labels create --name "Area" --isGroup
-linear-axi labels update --id <id> --color "#ff0000"
-linear-axi labels delete --id <id>
-linear-axi comments list --issue LIN-123
-linear-axi comments create --issue LIN-123 --body "Ready for review."
-linear-axi documents view <id>
-linear-axi documents create --title "Spec" --team ENG --content-file spec.md
-linear-axi documents update --id <id> --content "Updated"
-linear-axi milestones list --project "Roadmap"
-linear-axi milestones view --project "Roadmap" "Beta"
-linear-axi milestones create --project "Roadmap" --name "Beta"
-linear-axi milestones update --project "Roadmap" --id <id> --targetDate <yyyy-mm-dd>
-linear-axi cycles list --team ENG --type current
-linear-axi statuses list --team ENG
 ```
 
 ## Output behavior
 
-The default `linear-axi` dashboard shows setup hints until the current Git repo is bound to a Linear project. Use `projects list` to find the project name, then save it with `init`.
+Output uses [TOON](https://toonformat.dev/) so agents can parse compact structured results. The default dashboard shows setup hints until the current Git repo is bound to a Linear project, then shows the configured project and assigned-issue count. Lists include pagination hints, detail commands return one item, and structured errors include recovery commands.
 
-```bash
-> linear-axi
-bin: ~/.local/bin/linear-axi
-description: Agent ergonomic wrapper around the configured Linear MCP server. Prefer this over raw Linear MCP calls for Linear operations.
-workspace: Acme
-project: not initialized
-repo: my-repo
-status: No default Linear project is configured for this repository
-help[5]: Run `linear-axi projects list` to find Linear projects,"Run `linear-axi init --project \"<project>\"` to bind this repo",Run `linear-axi issues list --assignee me --all-projects` to list your assigned issues across Linear,"Run `linear-axi <command> <subcommand>` — commands: init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels",Run `linear-axi --help` to inspect complete command and flag help
-```
-
-After initialization, the dashboard shows the configured repo project plus a project-scoped count of issues assigned to you instead of listing issue rows.
-
-```bash
-> linear-axi
-workspace: Acme
-project: Roadmap
-repo: my-repo
-issues: 3 assigned to me in project
-help[2]:
-  Run `linear-axi <command> <subcommand>` — commands: init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels
-  Run `linear-axi --help` to inspect complete command and flag help
-```
-
-If the saved default project is not found in the authenticated workspace, the dashboard reports the invalid default and suggests searching the current workspace or replacing `.linear-project`. Project-scoped commands fail with the same `VALIDATION_ERROR` before sending the stale project to Linear.
-
-```bash
-> linear-axi projects list --query roadmap --limit 25
-count: 1 returned (more available)
-cursor: next-page
-projects[1]{status,name,id}:
-  In Progress,Roadmap,p1
-help[2]:
-  Run `linear-axi projects list --fields id,name,status` to choose fields
-  Run `linear-axi projects list --limit 25 --query roadmap --cursor next-page` to continue
-```
-
-Detail commands such as `issues view <id>` and `documents view <id>` return one item. 
-
-```bash
-> linear-axi issues create --title "Fix auth" --team ENG --project Roadmap
-issue:
-  id: LIN-123
-  title: Fix auth
-  state: Todo
-  project: Roadmap
-  team: Engineering
-  url: https://linear.app/acme/issue/LIN-123/fix-auth
-```
-
-```bash
-> linear-axi issues view LIN-404
-error: issue not found: LIN-404
-code: NOT_FOUND
-type: The requested Linear resource was not found.
-help[2]:
-  Run `linear-axi issues list --query LIN-404` to search for the issue
-  Run `linear-axi issues create --title "Title" --team "<team>"` to create a new issue
-```
-
-Unknown commands and subcommands return structured usage errors with recovery hints instead of calling the Linear MCP server.
-
-```bash
-> linear-axi releases list
-error: "Unknown command: releases"
-code: VALIDATION_ERROR
-help[1]: Run `--help` to see available commands
-```
+If the saved project is not found in the authenticated workspace, project-scoped commands fail with `VALIDATION_ERROR` and suggest replacing `.linear-project`.
 
 ## Development
 
 `src/cli.js` is the runtime/router layer. It delegates top-level CLI behavior to `axi-sdk-js` while keeping one Linear command registry shared by the SDK entrypoint and the testable dispatcher. Resource command handlers live in `src/commands/`, with shared command behavior in `src/commands/shared.js` and lower-level formatting, MCP, argument, and repo-project helpers in `src/lib/`.
 
 ```sh
-npm run build:skill
 npm test
 npm run check
 npm run demo
 ```
 
-The committed `skills/linear-axi/SKILL.md` is generated by `npm run build:skill`; `npm run check` fails if it drifts from the shared skill source. The npm package includes `skills/linear-axi/`, so published releases ship the same installable Agent Skill documented in Install.
+The npm package includes the installable `skills/linear-axi/SKILL.md` documented in Install.
 
 GitHub Actions runs `npm run check` on pushes and pull requests through `.github/workflows/check.yml`.
 
-`npm run demo` renders `docs/demo.webm` from `docs/demo.tape` using [VHS](https://github.com/charmbracelet/vhs). WebM keeps the demo high resolution while using much less memory than GIF during generation. The tape uses the local executable path, so it can be regenerated from a checkout without installing `linear-axi` globally.
+`npm run demo` renders `docs/demo.gif` from `docs/demo.tape` using [VHS](https://github.com/charmbracelet/vhs). The tape uses the local executable path, so it can be regenerated from a checkout without installing `linear-axi` globally.

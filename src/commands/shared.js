@@ -11,17 +11,11 @@ export const DEFAULT_LIMIT = 50;
 
 export const LIST_TOOL_ALIASES = {
   issues: ["list_issues"],
-  issue: ["list_issues"],
   projects: ["list_projects"],
-  project: ["list_projects"],
   teams: ["list_teams"],
-  team: ["list_teams"],
   users: ["list_users"],
-  user: ["list_users"],
   documents: ["list_documents"],
-  document: ["list_documents"],
   labels: ["list_issue_labels"],
-  label: ["list_issue_labels"],
 };
 
 export const PROJECT_SCOPED_LIST_ALIASES = ["issues", "documents"];
@@ -142,23 +136,6 @@ function addRelationStatuses(value, statuses) {
   return { ...value, status };
 }
 
-export async function ensureIssueDoesNotExist(title, team, runtime) {
-  await ensureNamedResourceDoesNotExist(runtime, {
-    resource: "issue",
-    listTool: "list_issues",
-    listArgs: { query: title, team, limit: 10 },
-    query: title,
-    team,
-    name: (issue) => issue.title,
-    id: (issue) => issue.identifier ?? issue.id ?? "<id>",
-    help: (id) => [
-      `Run \`linear-axi issues view ${formatCommandArg(id)}\` to inspect the existing issue`,
-      `Run \`linear-axi issues update --id ${formatCommandArg(id)} --state "<state>"\` to edit it`,
-      `Run \`linear-axi issues create --title ${formatCommandArg(`${title} copy`)} --team ${formatCommandArg(team)}\` to create a distinct issue`,
-    ],
-  });
-}
-
 export async function getProjectDetail(id, runtime) {
   return getDetailWithListFallback(runtime, {
     detailTool: "get_project",
@@ -178,23 +155,6 @@ export async function ensureProjectExists(id, runtime) {
     `Run \`linear-axi projects list --query ${formatCommandArg(id)} --fields id,name,status\` to search for the project`,
     'Run `linear-axi projects create --name "Roadmap" --team "<team>"` to create a new project',
   ]);
-}
-
-export async function ensureProjectDoesNotExist(name, team, runtime) {
-  await ensureNamedResourceDoesNotExist(runtime, {
-    resource: "project",
-    listTool: "list_projects",
-    listArgs: { query: name, limit: 10 },
-    query: name,
-    team,
-    name: (project) => project.name,
-    id: (project) => project.id ?? project.slugId ?? "<id>",
-    help: (id) => [
-      `Run \`linear-axi projects list --query ${formatCommandArg(name)} --full\` to inspect matching projects`,
-      `Run \`linear-axi projects update --id ${formatCommandArg(id)} --summary "Updated scope"\` to edit it`,
-      `Run \`linear-axi projects create --name ${formatCommandArg(`${name} copy`)} --team ${formatCommandArg(team)}\` to create a distinct project`,
-    ],
-  });
 }
 
 export function projectSaveToolArgs(toolName, args) {
@@ -272,17 +232,6 @@ function detailResult(detail, options) {
   return options.transform ? options.transform(detail) : detail;
 }
 
-async function ensureNamedResourceDoesNotExist(runtime, options) {
-  const listed = await runtime.client.callTool(options.listTool, options.listArgs);
-  const match = asArray(extractData(listed)).find((item) => {
-    return isSameText(options.name(item), options.query) && belongsToTeam(item, options.team);
-  });
-  if (!match) return;
-  const id = options.id(match);
-  const name = options.name(match) ?? options.query;
-  throw new AxiError("operational", `${options.resource} already exists: ${id} ${name}`, options.help(id));
-}
-
 export async function ensureDocumentExists(id, runtime) {
   return requireExistingDetail(getDocumentDetail(id, runtime), "document", id, [
     `Run \`linear-axi documents list --query ${formatCommandArg(id)} --fields id,title,updatedAt\` to search for the document`,
@@ -353,22 +302,6 @@ export async function workspaceName(cwd) {
   return basename(root ?? resolve(cwd));
 }
 
-export function pluralName(name) {
-  const names = {
-    issue: "issues",
-    project: "projects",
-    team: "teams",
-    user: "users",
-    document: "documents",
-    label: "labels",
-  };
-  return names[name] ?? name;
-}
-
-function isSameText(left, right) {
-  return String(left ?? "").trim().toLocaleLowerCase() === String(right ?? "").trim().toLocaleLowerCase();
-}
-
 function isEmptyContainer(value) {
   return value && typeof value === "object" && Object.keys(value).length === 0;
 }
@@ -380,17 +313,4 @@ function isBlankDetail(value, identityFields) {
 
 function hasText(value) {
   return String(value ?? "").trim() !== "";
-}
-
-function belongsToTeam(item, team) {
-  if (team === undefined || team === null || team === "") return true;
-  const candidates = [
-    item.team,
-    item.team?.id,
-    item.team?.key,
-    item.team?.name,
-    item.teamId,
-    ...(Array.isArray(item.teams) ? item.teams.flatMap((entry) => [entry, entry?.id, entry?.key, entry?.name]) : []),
-  ];
-  return candidates.some((candidate) => isSameText(candidate, team));
 }

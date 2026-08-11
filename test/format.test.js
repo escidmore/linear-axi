@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { decode } from "@toon-format/toon";
 import { renderToon } from "../src/format.js";
 import { formatCommandArg } from "../src/lib/cli-helpers.js";
 import { compactDocumentDetail, compactIssues } from "../src/lib/linear-format.js";
@@ -24,11 +25,9 @@ test("renders empty arrays compactly", () => {
   assert.equal(renderToon({ issues: [] }), "issues: []\n");
 });
 
-test("renders help arrays as multiline hints", () => {
-  assert.equal(
-    renderToon({ help: ["Run `linear-axi issues list`", "Run `linear-axi auth login`"] }),
-    "help[2]:\n  Run `linear-axi issues list`\n  Run `linear-axi auth login`\n",
-  );
+test("renders decodable help arrays", () => {
+  const value = { count: 2, help: ["Run `linear-axi issues list`", "Run `linear-axi auth login`"] };
+  assert.deepEqual(decode(renderToon(value)), value);
 });
 
 test("compact issue sorting preserves input order within the same status", () => {

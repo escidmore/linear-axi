@@ -38,13 +38,7 @@ export function fieldHint(publicName) {
 }
 
 export function selectFields(items, fields) {
-  return items.map((item) => {
-    const selected = {};
-    for (const field of fields) {
-      selected[field] = fieldValue(item, field);
-    }
-    return selected;
-  });
+  return items.map((item) => Object.fromEntries(fields.map((field) => [field, fieldValue(item, field)])));
 }
 
 export function paginationInfo(data, rowCount) {

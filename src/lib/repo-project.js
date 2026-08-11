@@ -1,4 +1,5 @@
-import { readFile, stat } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { usage } from "../args.js";
 import { formatCommandArg } from "./cli-helpers.js";
@@ -170,18 +171,9 @@ export function workspaceFromLinearUrl(url) {
 export async function findGitRoot(cwd) {
   let current = resolve(cwd);
   while (true) {
-    if (await pathExists(join(current, ".git"))) return current;
+    if (existsSync(join(current, ".git"))) return current;
     const parent = dirname(current);
     if (parent === current) return null;
     current = parent;
-  }
-}
-
-async function pathExists(path) {
-  try {
-    await stat(path);
-    return true;
-  } catch {
-    return false;
   }
 }

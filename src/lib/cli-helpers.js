@@ -71,19 +71,15 @@ export function parseFiniteNumber(name, value) {
   return number;
 }
 
-export async function readTextFlag(path, cwd) {
-  const absolute = isAbsolute(path) ? path : resolve(cwd, path);
-  try {
-    return await readFile(absolute, "utf8");
-  } catch {
-    throw usage(`file could not be read: ${path}`, ["Rerun with a readable file path"]);
-  }
-}
-
 export async function applyTextFileFlag(toolArgs, parsed, options) {
   if (parsed[options.flag] === undefined) return;
   if (options.preserveExisting && toolArgs[options.field] !== undefined) return;
-  toolArgs[options.field] = await readTextFlag(parsed[options.flag], options.cwd);
+  const path = parsed[options.flag];
+  try {
+    toolArgs[options.field] = await readFile(isAbsolute(path) ? path : resolve(options.cwd, path), "utf8");
+  } catch {
+    throw usage(`file could not be read: ${path}`, ["Rerun with a readable file path"]);
+  }
 }
 
 function appendFlag(parts, name, value) {

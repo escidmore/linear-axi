@@ -22,7 +22,6 @@ import {
   LIST_CONTINUATION_FLAGS,
   LIST_TOOL_ALIASES,
   PROJECT_SCOPED_LIST_ALIASES,
-  pluralName,
 } from "./shared.js";
 
 const EMPTY_LIST_HINTS = {
@@ -35,22 +34,20 @@ const EMPTY_LIST_HINTS = {
 };
 
 export async function listResourceCommand(alias, args, runtime) {
-  const publicName = pluralName(alias);
   return dispatchCommandGroup(args, {
-    name: publicName,
-    help: () => groupHelp(publicName, ["list"]),
+    name: alias,
+    help: () => groupHelp(alias, ["list"]),
     handlers: {
       list: (rest) => aliasListCommand(alias, rest, runtime),
     },
-    unknownHelp: [`Run \`linear-axi ${publicName} list\``],
+    unknownHelp: [`Run \`linear-axi ${alias} list\``],
   });
 }
 
 export async function aliasListCommand(alias, args, runtime) {
-  const publicName = pluralName(alias);
   const toolNames = LIST_TOOL_ALIASES[alias];
-  const parsed = parseFlags(args, { boolean: ["help", ...LIST_BOOLEAN_FLAGS], example: `${publicName} list --limit ${DEFAULT_LIMIT}` });
-  if (parsed.help) return listAliasHelp(publicName);
+  const parsed = parseFlags(args, { boolean: ["help", ...LIST_BOOLEAN_FLAGS], example: `${alias} list --limit ${DEFAULT_LIMIT}` });
+  if (parsed.help) return listAliasHelp(alias);
   if (parsed["all-projects"] && !PROJECT_SCOPED_LIST_ALIASES.includes(alias)) {
     throw usage("--all-projects is only supported for issues and documents", [
       "Run `linear-axi issues list --all-projects`",
@@ -62,8 +59,8 @@ export async function aliasListCommand(alias, args, runtime) {
   if (PROJECT_SCOPED_LIST_ALIASES.includes(alias)) {
     await applyRepoProjectDefault(toolArgs, runtime, {
       allProjects: Boolean(parsed["all-projects"]),
-      allProjectsCommand: `linear-axi ${publicName} list --all-projects`,
-      command: `linear-axi ${publicName} list`,
+      allProjectsCommand: `linear-axi ${alias} list --all-projects`,
+      command: `linear-axi ${alias} list`,
       requireProject: true,
     });
   }
@@ -78,12 +75,12 @@ export async function aliasListCommand(alias, args, runtime) {
       : compactRows(alias, data);
   const rowCount = dataRows.length;
   const page = paginationInfo(data, rowCount);
-  const help = listHints(publicName, rowCount);
-  appendContinuationHelp(help, `linear-axi ${publicName} list`, parsed, LIST_CONTINUATION_FLAGS, page.cursor);
+  const help = listHints(alias, rowCount);
+  appendContinuationHelp(help, `linear-axi ${alias} list`, parsed, LIST_CONTINUATION_FLAGS, page.cursor);
   return renderToon({
     count: page.count,
     ...(page.cursor ? { cursor: page.cursor } : {}),
-    [publicName]: rows,
+    [alias]: rows,
     help,
   });
 }

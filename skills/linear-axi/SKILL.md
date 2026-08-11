@@ -31,13 +31,6 @@ Use linear-axi whenever a task touches Linear: listing, viewing, creating, or up
 4. Add `--fields` for columns, `--cursor` for pagination, and `--full` only when complete content is needed.
 5. Linear operation responses include contextual next-step hints under `help:` when recovery or follow-up is useful - follow them.
 
-## Commands
-
-```
-commands[13]:
-  (none)=dashboard, init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels
-```
-
 When using `npx -y @escidmore/linear-axi`, npx already resolves the package on demand.
 
 Run `npx -y @escidmore/linear-axi --help` for global flags, `npx -y @escidmore/linear-axi <resource> --help` for grouped subcommands, or `npx -y @escidmore/linear-axi <resource> <action> --help` for focused flags.
@@ -46,6 +39,5 @@ Run `npx -y @escidmore/linear-axi --help` for global flags, `npx -y @escidmore/l
 
 - Linear command output is TOON-encoded and token-efficient; pipe through grep/head only when a list is very long.
 - Default issue and project lists are grouped by status, show active work first, and keep ids last. Use `--fields` when you need a custom column order.
-- Mutations validate targets and report compact results; re-running a failed mutation is safe.
 - For multi-line markdown descriptions, comments, or documents, write the text to a UTF-8 file and pass `--description-file <path>`, `--body-file <path>`, or `--content-file <path>`.
 - Repository project defaults are validated before an issue, document, or milestone command uses them unless `--project <project>` overrides them. Use `--all-projects` on issue and document list commands only when a workspace-wide list is intended.
