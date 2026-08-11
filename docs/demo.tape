@@ -18,6 +18,9 @@ Sleep 100ms
 Type "DEMO_DIR=$(mktemp -d)"
 Enter
 Sleep 600ms
+Type 'LINEAR_AXI="$PWD/bin/linear-axi.js"'
+Enter
+Sleep 600ms
 Type 'git -C "$DEMO_DIR" init -q'
 Enter
 Sleep 600ms
@@ -37,30 +40,30 @@ Ctrl+L
 Sleep 1000ms
 Show
 
-Type "./bin/linear-axi.js"
+Type '"$LINEAR_AXI"'
 Enter
 Sleep 3s
 Ctrl+L
 Sleep 500ms
 
-Type "./bin/linear-axi.js teams list --fields key,name --limit 5"
+Type '"$LINEAR_AXI" teams list --fields key,name --limit 5'
 Enter
 Sleep 3s
 Hide
-Type "TEAM=$(./bin/linear-axi.js teams list --fields key --limit 1 | awk '/^  / { print $1; exit }')"
+Type "TEAM=$(\"$LINEAR_AXI\" teams list --fields key --limit 1 | awk '/^  / { print $1; exit }')"
 Enter
 Sleep 100ms
 Ctrl+L
 Sleep 200ms
 Show
 
-Type './bin/linear-axi.js projects list --query "$PROJECT" --fields id,name,status --limit 5'
+Type '"$LINEAR_AXI" projects list --query "$PROJECT" --fields id,name,status --limit 5'
 Enter
 Sleep 3s
 Ctrl+L
 Sleep 500ms
 
-Type './bin/linear-axi.js projects create --name "$PROJECT" --team "$TEAM" --summary "Short-lived demo project for the CLI walkthrough" | tee project.out'
+Type '"$LINEAR_AXI" projects create --name "$PROJECT" --team "$TEAM" --summary "Short-lived demo project for the CLI walkthrough" | tee project.out'
 Enter
 Sleep 3s
 Ctrl+L
@@ -73,7 +76,7 @@ Sleep 60ms
 Type "PROJECT_CLEANED="
 Enter
 Sleep 60ms
-Type 'cleanup_project() { [[ -n "$PROJECT_ID" && -z "$PROJECT_CLEANED" ]] && ./bin/linear-axi.js projects update --id "$PROJECT_ID" --state canceled >/dev/null; }'
+Type 'cleanup_project() { [[ -n "$PROJECT_ID" && -z "$PROJECT_CLEANED" ]] && "$LINEAR_AXI" projects update --id "$PROJECT_ID" --state canceled >/dev/null; }'
 Enter
 Sleep 60ms
 Type "trap cleanup_project EXIT"
@@ -82,19 +85,19 @@ Sleep 60ms
 Ctrl+L
 Sleep 500ms
 Show
-Type './bin/linear-axi.js init --project "$PROJECT"'
+Type '"$LINEAR_AXI" init --project "$PROJECT"'
 Enter
 Sleep 1s
 Ctrl+L
 Sleep 500ms
 
-Type "./bin/linear-axi.js"
+Type '"$LINEAR_AXI"'
 Enter
 Sleep 4.5s
 Ctrl+L
 Sleep 500ms
 
-Type './bin/linear-axi.js issues create --title "$ISSUE_TITLE" --team "$TEAM" --assignee me --priority 2 | tee issue.out'
+Type '"$LINEAR_AXI" issues create --title "$ISSUE_TITLE" --team "$TEAM" --assignee me --priority 2 | tee issue.out'
 Enter
 Sleep 3s
 Ctrl+L
@@ -107,37 +110,37 @@ Sleep 60ms
 Ctrl+L
 Sleep 500ms
 Show
-Type './bin/linear-axi.js issues list --assignee me --project "$PROJECT" --fields id,title,state,priority --limit 5'
+Type '"$LINEAR_AXI" issues list --assignee me --project "$PROJECT" --fields id,title,state,priority --limit 5'
 Enter
 Sleep 3s
 Ctrl+L
 Sleep 500ms
 
-Type './bin/linear-axi.js issues view "$ISSUE_ID"'
+Type '"$LINEAR_AXI" issues view "$ISSUE_ID"'
 Enter
 Sleep 3s
 Ctrl+L
 Sleep 500ms
 
-Type './bin/linear-axi.js comments create --issue "$ISSUE_ID" --body "Starting this now; demo captured the project setup and issue lookup."'
+Type '"$LINEAR_AXI" comments create --issue "$ISSUE_ID" --body "Starting this now; demo captured the project setup and issue lookup."'
 Enter
 Sleep 3s
 Ctrl+L
 Sleep 500ms
 
-Type './bin/linear-axi.js comments list --issue "$ISSUE_ID"'
+Type '"$LINEAR_AXI" comments list --issue "$ISSUE_ID"'
 Enter
 Sleep 3s
 Ctrl+L
 Sleep 500ms
 
-Type "./bin/linear-axi.js issues view all"
+Type '"$LINEAR_AXI" issues view all'
 Enter
 Sleep 3s
 Ctrl+L
 Sleep 500ms
 
-Type './bin/linear-axi.js projects update --id "$PROJECT_ID" --state canceled'
+Type '"$LINEAR_AXI" projects update --id "$PROJECT_ID" --state canceled'
 Enter
 Sleep 3s
 Hide
