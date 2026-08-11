@@ -1,7 +1,7 @@
 {
-  "name": "linear-axi",
-  "version": "0.1.0",
-  "description": "AXI wrapper for the Linear MCP server",
+  "name": "@escidmore/linear-axi",
+  "version": "0.2.0",
+  "description": "Community-maintained AXI wrapper for the Linear MCP server",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -32,16 +32,16 @@
     "agent",
     "agent-skills"
   ],
-  "author": "AnonymousMorris",
+  "author": "escidmore",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AnonymousMorris/linear-axi.git"
+    "url": "git+https://github.com/escidmore/linear-axi.git"
   },
   "bugs": {
-    "url": "https://github.com/AnonymousMorris/linear-axi/issues"
+    "url": "https://github.com/escidmore/linear-axi/issues"
   },
-  "homepage": "https://github.com/AnonymousMorris/linear-axi#readme",
+  "homepage": "https://github.com/escidmore/linear-axi#readme",
   "publishConfig": {
     "access": "public"
   },
