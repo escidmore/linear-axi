@@ -118,4 +118,4 @@ The npm package includes the installable `skills/linear-axi/SKILL.md` documented
 
 GitHub Actions runs `npm run check` on pushes and pull requests through `.github/workflows/check.yml`.
 
-`npm run demo` renders `docs/demo.webm` from `docs/demo.tape` using [VHS](https://github.com/charmbracelet/vhs). WebM keeps the demo high resolution while using much less memory than GIF during generation. The tape uses the local executable path, so it can be regenerated from a checkout without installing `linear-axi` globally.
+`npm run demo` renders `docs/demo.gif` from `docs/demo.tape` using [VHS](https://github.com/charmbracelet/vhs). The tape uses the local executable path, so it can be regenerated from a checkout without installing `linear-axi` globally.
