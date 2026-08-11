@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { decode } from "@toon-format/toon";
 import { main, run } from "../src/cli.js";
 
 const packageVersion = JSON.parse(
@@ -99,11 +100,13 @@ test("home uninitialized repo suggests project setup without global issue count"
   assert.match(output, /workspace: Acme\nproject: not initialized\nrepo: linear-axi/);
   assert.match(output, /project: not initialized/);
   assert.match(output, /status: No default Linear project is configured for this repository/);
-  assert.match(output, /Run `linear-axi projects list` to find Linear projects/);
-  assert.match(output, /Run `linear-axi init --project "<project>"` to bind this repo/);
-  assert.match(output, /Run `linear-axi issues list --assignee me --all-projects` to list your assigned issues across Linear/);
-  assert.match(output, /Run `linear-axi <command> <subcommand>` — commands: init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels/);
-  assert.match(output, /Run `linear-axi --help` to inspect complete command and flag help/);
+  assert.deepEqual(decode(output).help, [
+    "Run `linear-axi projects list` to find Linear projects",
+    "Run `linear-axi init --project \"<project>\"` to bind this repo",
+    "Run `linear-axi issues list --assignee me --all-projects` to list your assigned issues across Linear",
+    "Run `linear-axi <command> <subcommand>` — commands: init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels",
+    "Run `linear-axi --help` to inspect complete command and flag help",
+  ]);
   assert.doesNotMatch(output, /assigned to me$/m);
   assert.doesNotMatch(output, /Global issue/);
 });
@@ -162,7 +165,10 @@ test("home auth errors suggest login before list commands for initialized repos"
   assert.match(output, /workspace: Acme\nproject: Roadmap\n/);
   assert.match(output, /project: Roadmap/);
   assert.match(output, /error: Linear MCP OAuth authorization required/);
-  assert.match(output, /help\[2\]:\n  Run `linear-axi <command> <subcommand>` — commands: init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels\n  Run `linear-axi --help` to inspect complete command and flag help/);
+  assert.deepEqual(decode(output).help, [
+    "Run `linear-axi <command> <subcommand>` — commands: init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels",
+    "Run `linear-axi --help` to inspect complete command and flag help",
+  ]);
   assert.doesNotMatch(output, /linear-axi init --project/);
   assert.doesNotMatch(output, /issues list --assignee me --limit 50/);
 });
@@ -214,10 +220,12 @@ test("home warns when configured project is not in the current workspace", async
   assert.match(output, /workspace: acme\nproject: Linear AXI\n/);
   assert.match(output, /status: Default Linear project is invalid/);
   assert.match(output, /error: "The saved default Linear project does not exist in the authenticated workspace: Linear AXI"/);
-  assert.match(output, /Run `linear-axi projects list --query 'Linear AXI' --fields id,name,status` to search the current workspace/);
-  assert.match(output, /Run `linear-axi init --project "<project>" --force` to update \.linear-project/);
-  assert.match(output, /Run `linear-axi <command> <subcommand>` — commands: init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels/);
-  assert.match(output, /Run `linear-axi --help` to inspect complete command and flag help/);
+  assert.deepEqual(decode(output).help, [
+    "Run `linear-axi projects list --query 'Linear AXI' --fields id,name,status` to search the current workspace",
+    "Run `linear-axi init --project \"<project>\" --force` to update .linear-project",
+    "Run `linear-axi <command> <subcommand>` — commands: init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels",
+    "Run `linear-axi --help` to inspect complete command and flag help",
+  ]);
 });
 
 test("home summarizes project-assigned issues instead of listing rows", async () => {
@@ -258,7 +266,9 @@ test("empty lists render as gh-axi-style empty arrays", async () => {
 
   assert.match(output, /count: 0 returned/);
   assert.match(output, /projects: \[\]/);
-  assert.match(output, /Run `linear-axi projects create --name "\.\.\." --team "<team>"` to create a project/);
+  assert.deepEqual(decode(output).help, [
+    "Run `linear-axi projects create --name \"...\" --team \"<team>\"` to create a project",
+  ]);
   assert.doesNotMatch(output, /0 projects found/);
   assert.doesNotMatch(output, /--fields/);
 });
@@ -304,7 +314,7 @@ test("projects list uses list_projects wrapper", async () => {
 
   assert.deepEqual(seen, { name: "list_projects", args: { query: "roadmap", limit: 50 } });
   assert.match(output, /projects\[3\]\{status,name,id\}:\n  In Progress,Roadmap,p-progress\n  Planned,Next,p-planned\n  Backlog,Later,p-backlog/);
-  assert.match(output, /help\[1\]:\n  Run `linear-axi projects list --fields id,name,status` to choose fields/);
+  assert.deepEqual(decode(output).help, ["Run `linear-axi projects list --fields id,name,status` to choose fields"]);
   assert.doesNotMatch(output, /--full/);
   assert.doesNotMatch(output, /--query "<text>"/);
 });
@@ -348,7 +358,10 @@ test("list pagination hints shell-escape unsafe values", async () => {
   );
 
   assert.match(output, /cursor: next \$\(touch \/tmp\/cursor\)'\$TOKEN/);
-  assert.match(output, /--query 'roadmap \$\(touch \/tmp\/axi\)'\\''\$HOME' --cursor 'next \$\(touch \/tmp\/cursor\)'\\''\$TOKEN'/);
+  assert.equal(
+    decode(output).help[1],
+    "Run `linear-axi projects list --limit 25 --query 'roadmap $(touch /tmp/axi)'\\''$HOME' --cursor 'next $(touch /tmp/cursor)'\\''$TOKEN'` to continue",
+  );
 });
 
 test("list pagination hints are emitted for cursor-only responses", async () => {
@@ -973,7 +986,9 @@ test("comments create returns compact preview output", async () => {
   assert.match(output, /created: "2026-07-04T12:00:00Z"/);
   assert.match(output, /\.\.\. \(truncated, 121 chars total\)/);
   assert.doesNotMatch(output, /metadata/);
-  assert.match(output, /help\[1\]:\n  Run `linear-axi comments list --issue LIN-1 --full` to show complete comment bodies/);
+  assert.deepEqual(decode(output).help, [
+    "Run `linear-axi comments list --issue LIN-1 --full` to show complete comment bodies",
+  ]);
   assert.doesNotMatch(output, /Run `linear-axi comments list --issue LIN-1` to verify comments/);
 });
 
@@ -1289,7 +1304,7 @@ test("issues view compact output previews long descriptions", async () => {
 
   assert.match(output, /issue:/);
   assert.match(output, /description: ".+\.\.\. \(truncated, 1006 chars total\)"/);
-  assert.match(output, /help\[1\]:\n  Run `linear-axi issues view LIN-1 --full` to show the complete issue/);
+  assert.deepEqual(decode(output).help, ["Run `linear-axi issues view LIN-1 --full` to show the complete issue"]);
 });
 
 test("issues view compact output includes short descriptions without noisy help", async () => {
