@@ -64,7 +64,7 @@ export const LIST_CONTINUATION_FLAGS = [
 export async function getIssueDetail(id, runtime) {
   return getDetailWithListFallback(runtime, {
     detailTool: "get_issue",
-    detailArgs: { id },
+    detailArgs: { id, includeRelations: true },
     listTool: "list_issues",
     listArgs: { query: id, limit: 10 },
     identityFields: ["identifier", "id", "title"],

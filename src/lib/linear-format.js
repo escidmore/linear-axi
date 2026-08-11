@@ -17,6 +17,7 @@ const STATUS_RANKS = {
   "to do": 1,
   backlog: 2,
 };
+const ISSUE_RELATION_FIELDS = ["blocks", "blockedBy", "relatedTo", "duplicateOf"];
 
 export function compactRows(alias, data) {
   if (alias === "issues") return compactIssues(data);
@@ -100,6 +101,7 @@ export function compactIssueDetail(issue) {
       assignee: personName(issue.assignee),
       description: preview.text,
       url: issue.url ?? "",
+      ...(issue.relations !== undefined ? { relations: compactIssueRelations(issue.relations) } : {}),
     },
   };
 }
@@ -197,6 +199,22 @@ function personName(person) {
 
 function namedValue(value) {
   return value?.name ?? value ?? "";
+}
+
+function compactIssueRelations(relations) {
+  if (!relations || typeof relations !== "object") return relations;
+  return Object.fromEntries(
+    ISSUE_RELATION_FIELDS
+      .filter((field) => Object.hasOwn(relations, field))
+      .map((field) => [field, compactRelationValue(relations[field])]),
+  );
+}
+
+function compactRelationValue(value) {
+  if (Array.isArray(value)) return value.map(compactRelationValue);
+  if (!value || typeof value !== "object") return value;
+  const issue = value.issue ?? value;
+  return issue.identifier ?? issue.id ?? issue.key ?? issue.title ?? JSON.stringify(value);
 }
 
 function groupByStatusPriority(items) {

@@ -1418,7 +1418,7 @@ test("issues view full returns only matching issue detail", async () => {
   );
 
   assert.deepEqual(calls, [
-    { name: "get_issue", args: { id: "LIN-1" } },
+    { name: "get_issue", args: { id: "LIN-1", includeRelations: true } },
   ]);
   assert.match(output, /title: Right/);
   assert.match(output, /description: Full body/);
@@ -1465,6 +1465,33 @@ test("issues view compact output includes short descriptions without noisy help"
 
   assert.match(output, /description: Short body/);
   assert.doesNotMatch(output, /--full/);
+});
+
+test("issues view compact output exposes native relations", async () => {
+  const output = await run(
+    ["issues", "view", "LIN-1"],
+    runtime({
+      listTools: async () => [{ name: "get_issue" }],
+      callTool: async () => ({
+        structuredContent: {
+          identifier: "LIN-1",
+          title: "Right",
+          relations: {
+            blocks: [{ identifier: "LIN-2", title: "Blocked" }],
+            blockedBy: ["LIN-3"],
+            relatedTo: [{ id: "issue-id" }],
+            duplicateOf: { identifier: "LIN-4" },
+          },
+        },
+      }),
+    }),
+  );
+
+  assert.match(output, /relations:/);
+  assert.match(output, /blocks\[1\]: LIN-2/);
+  assert.match(output, /blockedBy\[1\]: LIN-3/);
+  assert.match(output, /relatedTo\[1\]: issue-id/);
+  assert.match(output, /duplicateOf: LIN-4/);
 });
 
 test("issues view missing issue returns not found", async () => {
@@ -2154,7 +2181,7 @@ test("issues update rejects a missing issue before mutation", async () => {
     },
   );
 
-  assert.deepEqual(calls, [{ name: "get_issue", args: { id: "LIN-404" } }]);
+  assert.deepEqual(calls, [{ name: "get_issue", args: { id: "LIN-404", includeRelations: true } }]);
 });
 
 test("projects create rejects an existing project before mutation", async () => {
