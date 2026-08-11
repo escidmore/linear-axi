@@ -1494,6 +1494,53 @@ test("issues view compact output exposes native relations", async () => {
   assert.match(output, /duplicateOf: LIN-4/);
 });
 
+test("issues view compact output includes relation statuses", async () => {
+  const calls = [];
+  const related = {
+    "LIN-2": { title: "Blocked", status: "Done" },
+    "LIN-3": { title: "Blocker", status: "In Progress" },
+    "LIN-4": { title: "Related", status: "Backlog" },
+    "LIN-5": { title: "Original", status: "Canceled" },
+  };
+  const output = await run(
+    ["issues", "view", "LIN-1"],
+    runtime({
+      listTools: async () => [{ name: "get_issue" }],
+      callTool: async (name, args) => {
+        calls.push({ name, args });
+        if (args.includeRelations) {
+          return {
+            structuredContent: {
+              identifier: "LIN-1",
+              title: "Right",
+              relations: {
+                blocks: [{ id: "LIN-2", title: "Blocked" }],
+                blockedBy: [{ id: "LIN-3", title: "Blocker" }],
+                relatedTo: [{ id: "LIN-4", title: "Related" }],
+                duplicateOf: { id: "LIN-5", title: "Original" },
+              },
+            },
+          };
+        }
+        const issue = related[args.id];
+        return { structuredContent: { id: args.id, ...issue } };
+      },
+    }),
+  );
+
+  assert.deepEqual(calls, [
+    { name: "get_issue", args: { id: "LIN-1", includeRelations: true } },
+    { name: "get_issue", args: { id: "LIN-2" } },
+    { name: "get_issue", args: { id: "LIN-3" } },
+    { name: "get_issue", args: { id: "LIN-4" } },
+    { name: "get_issue", args: { id: "LIN-5" } },
+  ]);
+  assert.match(output, /blocks\[1\]\{id,title,status\}:\n      LIN-2,Blocked,Done/);
+  assert.match(output, /blockedBy\[1\]\{id,title,status\}:\n      LIN-3,Blocker,In Progress/);
+  assert.match(output, /relatedTo\[1\]\{id,title,status\}:\n      LIN-4,Related,Backlog/);
+  assert.match(output, /duplicateOf:\n      id: LIN-5\n      title: Original\n      status: Canceled/);
+});
+
 test("issues view missing issue returns not found", async () => {
   await assert.rejects(
     () => run(
