@@ -2,7 +2,7 @@
 name: linear-axi
 description: "Operate Linear through the linear-axi CLI - issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels, auth, and repo project setup. Use whenever a task touches Linear: listing or creating issues, updating project work, reading documents, or managing comments."
 user-invocable: false
-author: Morris
+author: escidmore
 metadata:
   hermes:
     tags: [linear, issues, projects, planning]

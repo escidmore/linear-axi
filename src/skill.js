@@ -5,7 +5,7 @@ export const SKILL_DESCRIPTION =
   "milestones, cycles, statuses, labels, auth, and repo project setup. Use whenever a task touches " +
   "Linear: listing or creating issues, updating project work, reading documents, or managing comments.";
 
-export const SKILL_AUTHOR = "Morris";
+export const SKILL_AUTHOR = "escidmore";
 export const HERMES_TAGS = ["linear", "issues", "projects", "planning"];
 export const HERMES_CATEGORY = "project-management";
 export const DESCRIPTION =

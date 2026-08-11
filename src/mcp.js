@@ -2,8 +2,11 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
+
+const { version: VERSION } = createRequire(import.meta.url)("../package.json");
 
 export class LinearMcpClient {
   constructor({ url, token, fetchImpl, authStorePath } = {}) {
@@ -26,7 +29,7 @@ export class LinearMcpClient {
       authProvider: this.authProvider ?? undefined,
       fetch: this.fetchImpl,
     });
-    this.client = new Client({ name: "linear-axi", version: "0.2.0" });
+    this.client = new Client({ name: "linear-axi", version: VERSION });
     try {
       await this.client.connect(this.transport);
     } catch (error) {
