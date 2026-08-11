@@ -87,7 +87,7 @@ async function viewIssueCommand(args, runtime) {
     "Run `linear-axi issues list --limit 50` to view many issues",
     "Run `linear-axi issues view <id>` to view one issue",
   ]);
-  const detail = await ensureIssueExists(id, runtime);
+  const detail = await ensureIssueExists(id, runtime, { includeRelationStatuses: true });
   return renderDetailView({
     resource: "issue",
     detail,

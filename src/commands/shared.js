@@ -61,8 +61,10 @@ export const LIST_CONTINUATION_FLAGS = [
   "all-projects",
 ];
 
-export async function getIssueDetail(id, runtime) {
-  return getDetailWithListFallback(runtime, {
+const ISSUE_RELATION_FIELDS = ["blocks", "blockedBy", "relatedTo", "duplicateOf"];
+
+export async function getIssueDetail(id, runtime, options = {}) {
+  const detail = await getDetailWithListFallback(runtime, {
     detailTool: "get_issue",
     detailArgs: { id, includeRelations: true },
     listTool: "list_issues",
@@ -70,13 +72,74 @@ export async function getIssueDetail(id, runtime) {
     identityFields: ["identifier", "id", "title"],
     matches: (issue) => issue.id === id || issue.identifier === id,
   });
+  return options.includeRelationStatuses ? includeRelationStatuses(detail, runtime) : detail;
 }
 
-export async function ensureIssueExists(id, runtime) {
-  return requireExistingDetail(getIssueDetail(id, runtime), "issue", id, [
+export async function ensureIssueExists(id, runtime, options) {
+  return requireExistingDetail(getIssueDetail(id, runtime, options), "issue", id, [
     `Run \`linear-axi issues list --query ${formatCommandArg(id)}\` to search for the issue`,
     "Run `linear-axi issues create --title \"Title\" --team \"<team>\"` to create a new issue",
   ]);
+}
+
+async function includeRelationStatuses(detail, runtime) {
+  if (!detail?.relations || typeof detail.relations !== "object") return detail;
+
+  const relationIds = new Set();
+  for (const field of ISSUE_RELATION_FIELDS) {
+    for (const relation of relationItems(detail.relations[field])) {
+      const id = relationId(relation);
+      if (id && relationStatus(relation) === undefined) relationIds.add(id);
+    }
+  }
+  if (relationIds.size === 0) return detail;
+
+  const statusEntries = await Promise.all([...relationIds].map(async (id) => {
+    try {
+      const result = await runtime.client.callTool("get_issue", { id });
+      return [id, relationStatus(extractData(result))];
+    } catch {
+      return [id, undefined];
+    }
+  }));
+  const statuses = new Map(statusEntries.filter(([, status]) => status !== undefined));
+  if (statuses.size === 0) return detail;
+
+  return {
+    ...detail,
+    relations: Object.fromEntries(
+      Object.entries(detail.relations).map(([field, value]) => [field, addRelationStatuses(value, statuses)]),
+    ),
+  };
+}
+
+function relationItems(value) {
+  if (Array.isArray(value)) return value;
+  return value === undefined || value === null ? [] : [value];
+}
+
+function relationId(value) {
+  if (typeof value === "string") return value;
+  const issue = value?.issue ?? value;
+  return issue?.identifier ?? issue?.id ?? issue?.key;
+}
+
+function relationStatus(value) {
+  const issue = value?.issue ?? value;
+  return issue?.status?.name ?? issue?.status ?? issue?.state?.name ?? issue?.state;
+}
+
+function addRelationStatuses(value, statuses) {
+  if (Array.isArray(value)) return value.map((item) => addRelationStatuses(item, statuses));
+  if (!value || typeof value !== "object") {
+    const status = statuses.get(value);
+    return status === undefined ? value : { id: value, status };
+  }
+
+  const status = relationStatus(value) ?? statuses.get(relationId(value));
+  if (status === undefined) return value;
+  if (value.issue) return { ...value, issue: { ...value.issue, status } };
+  return { ...value, status };
 }
 
 export async function ensureIssueDoesNotExist(title, team, runtime) {

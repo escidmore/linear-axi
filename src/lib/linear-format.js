@@ -214,7 +214,18 @@ function compactRelationValue(value) {
   if (Array.isArray(value)) return value.map(compactRelationValue);
   if (!value || typeof value !== "object") return value;
   const issue = value.issue ?? value;
-  return issue.identifier ?? issue.id ?? issue.key ?? issue.title ?? JSON.stringify(value);
+  const id = issue.identifier ?? issue.id ?? issue.key ?? issue.title ?? JSON.stringify(value);
+  const status = relationStatus(issue);
+  if (status === undefined) return id;
+  return {
+    id,
+    ...(issue.title !== undefined ? { title: issue.title } : {}),
+    status,
+  };
+}
+
+function relationStatus(issue) {
+  return issue?.status?.name ?? issue?.status ?? issue?.state?.name ?? issue?.state;
 }
 
 function groupByStatusPriority(items) {
