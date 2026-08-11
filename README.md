@@ -1,6 +1,8 @@
 # linear-axi
 
-`linear-axi` is a command-line interface that lets coding agents work with Linear more easily than an MCP server by re-exporting the same functionality behind a new interface designed with care. 
+`linear-axi` is a community-maintained fork of [AnonymousMorris/linear-axi](https://github.com/AnonymousMorris/linear-axi). It lets coding agents work with Linear more easily than an MCP server by re-exporting the same functionality behind a new interface designed with care.
+
+The fork is published as [`@escidmore/linear-axi`](https://www.npmjs.com/package/@escidmore/linear-axi); the installed executable remains `linear-axi`.
 
 The project follows the [AXI](https://axi.md/) pattern: an Agent eXperience. 
 
@@ -11,23 +13,23 @@ The project follows the [AXI](https://axi.md/) pattern: an Agent eXperience.
 Run the CLI without installing it globally:
 
 ```sh
-npx -y linear-axi --help
+npx -y @escidmore/linear-axi --help
 ```
 
 Or install it as a global command:
 
 ```sh
-npm install -g linear-axi
+npm install -g @escidmore/linear-axi
 linear-axi --help
 ```
 
 Agents that support [Agent Skills](https://agentskills.io) can also install the linear-axi skill with the [Vercel skill installer](https://github.com/vercel-labs/skills):
 
 ```sh
-npx skills add AnonymousMorris/linear-axi -g
+npx skills add escidmore/linear-axi -g
 ```
 
-That is enough for agents that support skills. The skill teaches the agent to run `linear-axi` through `npx -y linear-axi`, so the CLI is resolved on demand. You still need access to a Linear MCP endpoint. The default endpoint uses OAuth; run `npx -y linear-axi auth login` when authorization is needed, or use the manual flow documented below for headless environments.
+That is enough for agents that support skills. The skill teaches the agent to run `linear-axi` through `npx -y @escidmore/linear-axi`, so the CLI is resolved on demand. You still need access to a Linear MCP endpoint. The default endpoint uses OAuth; run `npx -y @escidmore/linear-axi auth login` when authorization is needed, or use the manual flow documented below for headless environments.
 
 `-g` installs the skill globally. Drop `-g` to install it only for the current project.
 
@@ -45,6 +47,15 @@ npm link
 ```
 
 `linear-axi` requires Node.js 20 or newer.
+
+## Releasing
+
+The `@escidmore/linear-axi` package is published by GitHub Actions when a `v*` tag is pushed. Configure npm Trusted Publishing for the `escidmore/linear-axi` repository and the `.github/workflows/publish.yml` workflow, then release a version from `main`:
+
+```sh
+npm version patch
+git push origin main --follow-tags
+```
 
 ## Configuration
 

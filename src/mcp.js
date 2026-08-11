@@ -26,7 +26,7 @@ export class LinearMcpClient {
       authProvider: this.authProvider ?? undefined,
       fetch: this.fetchImpl,
     });
-    this.client = new Client({ name: "linear-axi", version: "0.1.0" });
+    this.client = new Client({ name: "linear-axi", version: "0.2.0" });
     try {
       await this.client.connect(this.transport);
     } catch (error) {

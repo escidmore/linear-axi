@@ -13,11 +13,11 @@ metadata:
 
 Agent ergonomic wrapper around the configured Linear MCP server. Prefer this over raw Linear MCP calls for Linear operations.
 
-You do not need linear-axi installed globally - invoke it with `npx -y linear-axi <command>`.
-If linear-axi output shows a follow-up command starting with `linear-axi`, run it as `npx -y linear-axi ...` instead.
+You do not need linear-axi installed globally - invoke it with `npx -y @escidmore/linear-axi <command>`.
+If linear-axi output shows a follow-up command starting with `linear-axi`, run it as `npx -y @escidmore/linear-axi ...` instead.
 linear-axi requires Node.js 20 or newer.
 
-linear-axi uses the configured Linear MCP server. The default remote endpoint uses OAuth; if authorization is required, run `npx -y linear-axi auth login`. Run `npx -y linear-axi auth logout` to clear saved OAuth credentials without changing bearer-token environment variables.
+linear-axi uses the configured Linear MCP server. The default remote endpoint uses OAuth; if authorization is required, run `npx -y @escidmore/linear-axi auth login`. Run `npx -y @escidmore/linear-axi auth logout` to clear saved OAuth credentials without changing bearer-token environment variables.
 
 ## When to use
 
@@ -25,8 +25,8 @@ Use linear-axi whenever a task touches Linear: listing, viewing, creating, or up
 
 ## Workflow
 
-1. Run `npx -y linear-axi` with no arguments for a dashboard of the current repo. Uninitialized repos show setup hints instead of workspace-wide issue counts.
-2. List Linear projects with `npx -y linear-axi projects list`, then bind a repository with `npx -y linear-axi init --project "<project>"`; this accepts a project id, name, or slug, validates the project, and stores discovered workspace metadata in `.linear-project`.
+1. Run `npx -y @escidmore/linear-axi` with no arguments for a dashboard of the current repo. Uninitialized repos show setup hints instead of workspace-wide issue counts.
+2. List Linear projects with `npx -y @escidmore/linear-axi projects list`, then bind a repository with `npx -y @escidmore/linear-axi init --project "<project>"`; this accepts a project id, name, or slug, validates the project, and stores discovered workspace metadata in `.linear-project`.
 3. Drill in command-first: `issues list`, `issues view <id>`, `projects list`, `documents view <id>`, `comments list --issue <id>`, and so on.
 4. Add `--fields` for columns, `--cursor` for pagination, and `--full` only when complete content is needed.
 5. Linear operation responses include contextual next-step hints under `help:` when recovery or follow-up is useful - follow them.
@@ -38,9 +38,9 @@ commands[13]:
   (none)=dashboard, init, auth, issues, projects, teams, users, comments, documents, milestones, cycles, statuses, labels
 ```
 
-When using `npx -y linear-axi`, npx already resolves the package on demand.
+When using `npx -y @escidmore/linear-axi`, npx already resolves the package on demand.
 
-Run `npx -y linear-axi --help` for global flags, `npx -y linear-axi <resource> --help` for grouped subcommands, or `npx -y linear-axi <resource> <action> --help` for focused flags.
+Run `npx -y @escidmore/linear-axi --help` for global flags, `npx -y @escidmore/linear-axi <resource> --help` for grouped subcommands, or `npx -y @escidmore/linear-axi <resource> <action> --help` for focused flags.
 
 ## Tips
 
