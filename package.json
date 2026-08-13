@@ -1,6 +1,6 @@
 {
   "name": "@escidmore/linear-axi",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Community-maintained AXI wrapper for the Linear MCP server",
   "type": "module",
   "engines": {
