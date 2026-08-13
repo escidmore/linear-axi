@@ -52,16 +52,9 @@ npm link
 
 ## Releasing
 
-The `@escidmore/linear-axi` package is published by GitHub Actions when a `v*` tag is pushed. For the first release, add a short-lived npm publish token as the `NPM_BOOTSTRAP_TOKEN` repository secret; the workflow uses it only while the package is being created. Then configure npm Trusted Publishing for the `escidmore/linear-axi` repository and the `.github/workflows/publish.yml` workflow, remove `NPM_BOOTSTRAP_TOKEN`, and use the OIDC-only path for subsequent releases:
+The `@escidmore/linear-axi` package is published by `.github/workflows/publish.yml` when a `v*` tag is pushed, using npm Trusted Publishing for the `escidmore/linear-axi` repository.
 
-For the initial fork release:
-
-```sh
-git tag v0.2.0
-git push origin v0.2.0
-```
-
-Subsequent releases go through a release branch and a pull request. Branch off `main`, bump the version with the level the change calls for, and push the branch:
+Releases go through a release branch and a pull request. Branch off `main`, bump the version with the level the change calls for, and push the branch:
 
 ```sh
 git switch -c release/vX.Y.Z main
