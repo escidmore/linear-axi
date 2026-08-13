@@ -318,7 +318,7 @@ const ISSUE_MUTATION_FIELDS_HELP = `  --title <title>
   --team <team>
   --state <state>
   --assignee <user>
-  --project <project>
+  --project <project> (empty string for no project)
   --cycle <cycle>
   --parentId <issue-id>
   --label <label> repeatable
