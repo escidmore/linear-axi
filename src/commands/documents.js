@@ -50,7 +50,7 @@ async function viewDocumentCommand(args, runtime) {
     resource: "document",
     detail,
     full: parsed.full,
-    compact: (document) => compactDocumentDetail(document, id),
+    compact: (document, unverified) => compactDocumentDetail(document, id, unverified),
     fullCommand: `linear-axi documents view ${id} --full`,
   });
 }

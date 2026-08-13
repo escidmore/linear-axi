@@ -162,8 +162,9 @@ export function compactDocumentMutation(document) {
   };
 }
 
-export function compactDocumentDetail(document, id) {
-  const content = rewriteMcpHints(String(document.content ?? document.body ?? ""), id);
+export function compactDocumentDetail(document, id, unverified = false) {
+  const raw = String(document.content ?? document.body ?? "");
+  const content = unverified ? raw : rewriteMcpHints(raw, id);
   const preview = formattedPreview(content, 1200);
   return {
     truncated: preview.truncated,

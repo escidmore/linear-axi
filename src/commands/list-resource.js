@@ -57,8 +57,9 @@ export async function aliasListCommand(alias, args, runtime) {
   }
   const toolArgs = collectKnownArgs(parsed, LIST_TOOL_ARG_FLAGS);
   if (!("limit" in toolArgs)) toolArgs.limit = DEFAULT_LIMIT;
+  let repoProjectId;
   if (PROJECT_SCOPED_LIST_ALIASES.includes(alias)) {
-    await applyRepoProjectDefault(toolArgs, runtime, {
+    repoProjectId = await applyRepoProjectDefault(toolArgs, runtime, {
       allProjects: Boolean(parsed["all-projects"]),
       allProjectsCommand: `linear-axi ${alias} list --all-projects`,
       command: `linear-axi ${alias} list`,
@@ -69,8 +70,7 @@ export async function aliasListCommand(alias, args, runtime) {
   if (alias === "documents" && toolArgs.project !== undefined) {
     const projectRef = toolArgs.project;
     delete toolArgs.project;
-    const project = await ensureProjectExists(projectRef, runtime);
-    toolArgs.projectId = project.id ?? projectRef;
+    toolArgs.projectId = repoProjectId ?? (await ensureProjectExists(projectRef, runtime)).id ?? projectRef;
   }
 
   const result = await callAvailableTool(runtime, toolNames, toolArgs);

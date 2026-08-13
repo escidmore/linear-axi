@@ -28,7 +28,7 @@ export async function applyRepoProjectDefault(toolArgs, runtime, options = {}) {
   if (repoProject) {
     const validated = await validateRepoProject(repoProject, runtime, { command });
     toolArgs.project = validated.project;
-    return;
+    return validated.projectId;
   }
 
   if (requireProject) {
@@ -52,6 +52,7 @@ export async function validateRepoProject(repoProject, runtime, options = {}) {
   return {
     project: repoProject.project,
     ...(workspace ? { workspace } : {}),
+    ...(typeof match.id === "string" && match.id.trim() ? { projectId: match.id.trim() } : {}),
   };
 }
 

@@ -2625,6 +2625,104 @@ test("issues create without a bound project suggests the team-level escape hatch
   );
 });
 
+test("documents list reuses the validated repo project id instead of refetching it", async () => {
+  const repo = await makeGitRepo("Roadmap");
+  const calls = [];
+  await run(
+    ["documents", "list"],
+    runtime({
+      cwd: repo,
+      listTools: async () => [{ name: "get_project" }, { name: "list_projects" }, { name: "list_documents" }],
+      callTool: async (name, args) => {
+        calls.push({ name, args });
+        if (name === "get_project") return { structuredContent: { id: "proj-uuid", name: "Roadmap" } };
+        return { structuredContent: { documents: [] } };
+      },
+    }),
+  );
+
+  assert.deepEqual(calls, [
+    { name: "get_project", args: { query: "Roadmap" } },
+    { name: "list_documents", args: { limit: 50, projectId: "proj-uuid" } },
+  ]);
+});
+
+test("projects view refetches the list-matched project by id to escape truncation", async () => {
+  const calls = [];
+  const description = "d".repeat(2000);
+  const output = await run(
+    ["projects", "view", "API", "--full"],
+    runtime({
+      listTools: async () => [{ name: "get_project" }, { name: "list_projects" }],
+      callTool: async (name, args) => {
+        calls.push({ name, args });
+        if (name === "list_projects") {
+          return {
+            structuredContent: {
+              projects: [{ id: "proj-api", name: "API", description: "short (truncated, use `get_project` for full)" }],
+            },
+          };
+        }
+        if (args.query === "proj-api") {
+          return { structuredContent: { id: "proj-api", name: "API", description } };
+        }
+        return { structuredContent: { id: "proj-gateway", name: "API Gateway", description: "wrong project" } };
+      },
+    }),
+  );
+
+  assert.deepEqual(calls.map((call) => call.name), ["get_project", "list_projects", "get_project"]);
+  assert.deepEqual(calls.at(-1).args, { query: "proj-api" });
+  assert.match(output, new RegExp(`description: ${description}`));
+  assert.doesNotMatch(output, /may be truncated/);
+});
+
+test("projects view warns when the list fallback row cannot be refetched", async () => {
+  const output = await run(
+    ["projects", "view", "API", "--full"],
+    runtime({
+      listTools: async () => [{ name: "get_project" }, { name: "list_projects" }],
+      callTool: async (name, args) => {
+        if (name === "list_projects") {
+          return {
+            structuredContent: {
+              projects: [{ id: "proj-api", name: "API", description: "short (truncated, use `get_project` for full)" }],
+            },
+          };
+        }
+        if (args.query === "proj-api") return { structuredContent: {} };
+        return { structuredContent: { id: "proj-gateway", name: "API Gateway", description: "wrong project" } };
+      },
+    }),
+  );
+
+  assert.deepEqual(decode(output).help, [
+    "This project came from list results and may be truncated by the Linear MCP server",
+  ]);
+  assert.match(output, /use `get_project`/);
+  assert.doesNotMatch(output, /linear-axi projects view API --full/);
+});
+
+test("documents view warns when the list fallback row cannot be refetched", async () => {
+  const output = await run(
+    ["documents", "view", "Spec"],
+    runtime({
+      listTools: async () => [{ name: "list_documents" }],
+      callTool: async () => ({
+        structuredContent: {
+          documents: [{ id: "Spec", title: "Spec", content: "short (truncated, use `get_document` for full)" }],
+        },
+      }),
+    }),
+  );
+
+  assert.deepEqual(decode(output).help, [
+    "This document came from list results and may be truncated by the Linear MCP server",
+  ]);
+  assert.match(output, /use `get_document`/);
+  assert.doesNotMatch(output, /linear-axi documents view Spec --full/);
+});
+
 async function waitFor(predicate) {
   const started = Date.now();
   while (Date.now() - started < 3000) {

@@ -9,6 +9,8 @@ import { findGitRoot } from "../lib/repo-project.js";
 
 export const DEFAULT_LIMIT = 50;
 
+const UNVERIFIED_DETAIL = Symbol("unverifiedDetail");
+
 export const LIST_TOOL_ALIASES = {
   issues: ["list_issues"],
   projects: ["list_projects"],
@@ -140,6 +142,7 @@ export async function getProjectDetail(id, runtime) {
   return getDetailWithListFallback(runtime, {
     detailTool: "get_project",
     detailArgs: { query: id },
+    detailIdKey: "query",
     listTool: "list_projects",
     listArgs: { query: id, limit: 10 },
     identityFields: ["id", "slugId", "name"],
@@ -177,11 +180,21 @@ export async function renderMutation(runtime, options) {
 }
 
 export function renderDetailView(options) {
-  if (options.full) return renderToon({ [options.resource]: options.detail });
-  const compact = options.compact(options.detail);
+  const unverified = isUnverifiedDetail(options.detail);
+  const help = unverified
+    ? [`This ${options.resource} came from list results and may be truncated by the Linear MCP server`]
+    : [];
+  if (options.full) {
+    return renderToon({
+      [options.resource]: options.detail,
+      ...(help.length ? { help } : {}),
+    });
+  }
+  const compact = options.compact(options.detail, unverified);
+  if (compact.truncated) help.push(`Run \`${options.fullCommand}\` to show the complete ${options.resource}`);
   return renderToon({
     [options.resource]: compact[options.resource],
-    ...(compact.truncated ? { help: [`Run \`${options.fullCommand}\` to show the complete ${options.resource}`] } : {}),
+    ...(help.length ? { help } : {}),
   });
 }
 
@@ -226,7 +239,39 @@ async function getDetailWithListFallback(runtime, options) {
   const listed = await runtime.client.callTool(options.listTool, options.listArgs);
   const match = asArray(extractData(listed)).find(options.matches);
   if (!match) return null;
-  return detailResult(match, options);
+  const refetched = await refetchDetailById(runtime, options, match, knownToolNames);
+  return refetched ? detailResult(refetched, options) : markUnverified(match);
+}
+
+async function refetchDetailById(runtime, options, match, knownToolNames) {
+  const id = typeof match.id === "string" ? match.id.trim() : "";
+  if (!id) return null;
+  const known = knownToolNames ? knownToolNames.has(options.detailTool) : await hasTool(runtime, options.detailTool);
+  if (!known) return null;
+  try {
+    const data = extractData(await runtime.client.callTool(options.detailTool, {
+      ...options.detailArgs,
+      [options.detailIdKey ?? "id"]: id,
+    }));
+    if (isBlankDetail(data, options.identityFields) || !identityMatches(data, id)) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function identityMatches(detail, id) {
+  const target = id.toLocaleLowerCase();
+  return [detail?.id, detail?.slugId].some((value) => String(value ?? "").trim().toLocaleLowerCase() === target);
+}
+
+function markUnverified(detail) {
+  if (!detail || typeof detail !== "object") return detail;
+  return Object.defineProperty({ ...detail }, UNVERIFIED_DETAIL, { value: true });
+}
+
+export function isUnverifiedDetail(detail) {
+  return Boolean(detail && typeof detail === "object" && detail[UNVERIFIED_DETAIL]);
 }
 
 function detailResult(detail, options) {
