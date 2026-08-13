@@ -2723,6 +2723,58 @@ test("documents view warns when the list fallback row cannot be refetched", asyn
   assert.doesNotMatch(output, /linear-axi documents view Spec --full/);
 });
 
+test("issues create with an empty --project omits the project from save_issue", async () => {
+  const repo = await makeGitRepo("Roadmap");
+  const calls = [];
+  await run(
+    ["issues", "create", "--title", "Task", "--team", "ENG", "--project", ""],
+    runtime({
+      cwd: repo,
+      callTool: async (name, args) => {
+        calls.push({ name, args });
+        return { structuredContent: { identifier: "LIN-1", title: "Task" } };
+      },
+    }),
+  );
+
+  assert.deepEqual(calls, [{ name: "save_issue", args: { title: "Task", team: "ENG" } }]);
+});
+
+test("issues update with an empty --project clears it with null", async () => {
+  const calls = [];
+  await run(
+    ["issues", "update", "--id", "LIN-1", "--project", ""],
+    runtime({
+      listTools: async () => [{ name: "get_issue" }],
+      callTool: async (name, args) => {
+        calls.push({ name, args });
+        return { structuredContent: { identifier: "LIN-1", title: "Task" } };
+      },
+    }),
+  );
+
+  assert.deepEqual(calls.at(-1), { name: "save_issue", args: { id: "LIN-1", project: null } });
+});
+
+test("unverified detail does not promise a complete resource behind --full", async () => {
+  const output = await run(
+    ["documents", "view", "Spec"],
+    runtime({
+      listTools: async () => [{ name: "list_documents" }],
+      callTool: async () => ({
+        structuredContent: {
+          documents: [{ id: "Spec", title: "Spec", content: "c".repeat(2000) }],
+        },
+      }),
+    }),
+  );
+
+  assert.deepEqual(decode(output).help, [
+    "This document came from list results and may be truncated by the Linear MCP server",
+    "Run `linear-axi documents view Spec --full` to show the full retrieved document",
+  ]);
+});
+
 async function waitFor(predicate) {
   const started = Date.now();
   while (Date.now() - started < 3000) {

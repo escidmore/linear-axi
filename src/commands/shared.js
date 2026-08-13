@@ -191,7 +191,11 @@ export function renderDetailView(options) {
     });
   }
   const compact = options.compact(options.detail, unverified);
-  if (compact.truncated) help.push(`Run \`${options.fullCommand}\` to show the complete ${options.resource}`);
+  if (compact.truncated) {
+    help.push(unverified
+      ? `Run \`${options.fullCommand}\` to show the full retrieved ${options.resource}`
+      : `Run \`${options.fullCommand}\` to show the complete ${options.resource}`);
+  }
   return renderToon({
     [options.resource]: compact[options.resource],
     ...(help.length ? { help } : {}),

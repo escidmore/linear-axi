@@ -106,6 +106,7 @@ async function createIssueCommand(args, runtime) {
     requireProject: true,
     noProjectHint: 'Run `linear-axi issues create --title "Title" --team "<team>" --project ""` to create a team-level issue with no project',
   });
+  if (toolArgs.project === "") delete toolArgs.project;
   requireValue(toolArgs.title && toolArgs.team, "creating an issue requires --title and --team", ISSUE_CREATE_HELP);
   return saveIssue(toolArgs, runtime, [
     'Run `linear-axi issues create --title "Title" --team "<team>"`',
@@ -118,6 +119,7 @@ async function updateIssueCommand(args, runtime) {
   if (parsed.help) return issueUpdateHelp();
   const toolArgs = await issueToolArgs(parsed, runtime);
   if (!toolArgs.id) await applyRepoProjectDefault(toolArgs, runtime);
+  if (toolArgs.project === "") toolArgs.project = null;
   requireValue(toolArgs.id, "updating an issue requires --id", ISSUE_UPDATE_HELP);
   await ensureIssueExists(toolArgs.id, runtime);
   return saveIssue(toolArgs, runtime, ISSUE_UPDATE_HELP);
