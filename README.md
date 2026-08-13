@@ -61,11 +61,18 @@ git tag v0.2.0
 git push origin v0.2.0
 ```
 
-For subsequent releases:
+Subsequent releases go through a release branch and a pull request. Branch off `main`, bump the version with the level the change calls for, and push the branch:
 
 ```sh
-npm version patch
-git push origin main --follow-tags
+git switch -c release/vX.Y.Z main
+npm version minor   # or patch / major
+git push -u origin release/vX.Y.Z
+```
+
+`npm version` writes the bare version number as the commit subject and creates the matching tag. Once the pull request is merged into `main`, push that tag to trigger the publish workflow:
+
+```sh
+git push origin vX.Y.Z
 ```
 
 ## Configuration
