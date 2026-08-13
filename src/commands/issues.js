@@ -104,6 +104,7 @@ async function createIssueCommand(args, runtime) {
   await applyRepoProjectDefault(toolArgs, runtime, {
     command: "linear-axi issues create",
     requireProject: true,
+    noProjectHint: 'Run `linear-axi issues create --title "Title" --team "<team>" --project ""` to create a team-level issue with no project',
   });
   requireValue(toolArgs.title && toolArgs.team, "creating an issue requires --title and --team", ISSUE_CREATE_HELP);
   return saveIssue(toolArgs, runtime, [

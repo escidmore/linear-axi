@@ -1,11 +1,12 @@
-import { parseFlags } from "../args.js";
-import { collectKnownArgs, dispatchCommandGroup, rejectIdOnCreate, requireValue } from "../lib/cli-helpers.js";
-import { compactProjectMutation } from "../lib/linear-format.js";
-import { groupHelp, projectCreateHelp, projectUpdateHelp } from "./help.js";
+import { parseFlags, usage } from "../args.js";
+import { collectKnownArgs, dispatchCommandGroup, formatCommandArg, rejectIdOnCreate, requireValue } from "../lib/cli-helpers.js";
+import { compactProjectDetail, compactProjectMutation } from "../lib/linear-format.js";
+import { groupHelp, projectCreateHelp, projectUpdateHelp, projectViewHelp } from "./help.js";
 import { aliasListCommand } from "./list-resource.js";
 import {
   ensureProjectExists,
   projectSaveToolArgs,
+  renderDetailView,
   renderMutation,
 } from "./shared.js";
 
@@ -16,6 +17,7 @@ const PROJECT_CREATE_HELP = [
 ];
 const PROJECT_UPDATE_HELP = [
   'Run `linear-axi projects update --id <id> --summary "Updated scope"`',
+  "Run `linear-axi projects view <id>` to read the current description before replacing it",
   'Run `linear-axi projects list --query "Roadmap" --fields id,name,status` to find the project id',
 ];
 const PROJECT_ID_ON_CREATE_HELP = [
@@ -26,16 +28,33 @@ const PROJECT_ID_ON_CREATE_HELP = [
 export async function projectCommand(args, runtime) {
   return dispatchCommandGroup(args, {
     name: "projects",
-    help: () => groupHelp("projects", ["list", "create", "update"]),
+    help: () => groupHelp("projects", ["list", "view", "create", "update"]),
     handlers: {
       list: (rest) => aliasListCommand("projects", rest, runtime),
+      view: (rest) => viewProjectCommand(rest, runtime),
       create: (rest) => createProjectCommand(rest, runtime),
       update: (rest) => updateProjectCommand(rest, runtime),
     },
     unknownHelp: [
       "Run `linear-axi projects list`",
+      "Run `linear-axi projects view <id>`",
       'Run `linear-axi projects create --name "Roadmap" --team "<team>"`',
     ],
+  });
+}
+
+async function viewProjectCommand(args, runtime) {
+  const parsed = parseFlags(args, { boolean: ["help", "full"], example: "projects view <id>" });
+  if (parsed.help) return projectViewHelp();
+  const id = parsed.positionals[0] ?? parsed.id;
+  if (!id) throw usage("project id is required", ["Run `linear-axi projects view <id>`"]);
+  const detail = await ensureProjectExists(id, runtime);
+  return renderDetailView({
+    resource: "project",
+    detail,
+    full: parsed.full,
+    compact: (project) => compactProjectDetail(project, id),
+    fullCommand: `linear-axi projects view ${formatCommandArg(id)} --full`,
   });
 }
 

@@ -2,7 +2,7 @@ import { basename, resolve } from "node:path";
 import { AxiError, usage } from "../args.js";
 import { renderToon } from "../format.js";
 import { formatCommandArg, TOOL_BOOLEAN_FLAGS } from "../lib/cli-helpers.js";
-import { sanitizeDocument } from "../lib/linear-format.js";
+import { sanitizeDocument, sanitizeProject } from "../lib/linear-format.js";
 import { asArray, callAvailableTool, extractData, hasTool, isUnknownToolError, mutationData } from "../lib/mcp-tools.js";
 import { projectMatches } from "../lib/project-match.js";
 import { findGitRoot } from "../lib/repo-project.js";
@@ -147,6 +147,7 @@ export async function getProjectDetail(id, runtime) {
     fallbackOnBlankDetail: true,
     detailMatches: (project) => projectMatches(project, id),
     matches: (project) => projectMatches(project, id),
+    transform: (project) => sanitizeProject(project, id),
   });
 }
 

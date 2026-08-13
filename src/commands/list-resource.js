@@ -12,7 +12,7 @@ import {
   parseFields,
   selectFields,
 } from "../lib/linear-format.js";
-import { asArray, callAvailableTool, extractData } from "../lib/mcp-tools.js";
+import { asArray, callAvailableTool, mutationData } from "../lib/mcp-tools.js";
 import { applyRepoProjectDefault } from "../lib/repo-project.js";
 import { groupHelp, listAliasHelp } from "./help.js";
 import {
@@ -22,6 +22,7 @@ import {
   LIST_CONTINUATION_FLAGS,
   LIST_TOOL_ALIASES,
   PROJECT_SCOPED_LIST_ALIASES,
+  ensureProjectExists,
 } from "./shared.js";
 
 const EMPTY_LIST_HINTS = {
@@ -65,8 +66,15 @@ export async function aliasListCommand(alias, args, runtime) {
     });
   }
 
+  if (alias === "documents" && toolArgs.project !== undefined) {
+    const projectRef = toolArgs.project;
+    delete toolArgs.project;
+    const project = await ensureProjectExists(projectRef, runtime);
+    toolArgs.projectId = project.id ?? projectRef;
+  }
+
   const result = await callAvailableTool(runtime, toolNames, toolArgs);
-  const data = extractData(result);
+  const data = mutationData(result, [`Run \`linear-axi ${alias} list --help\` to review supported filters`]);
   const dataRows = asArray(data);
   const rows = parsed.full
     ? data
@@ -85,8 +93,17 @@ export async function aliasListCommand(alias, args, runtime) {
   });
 }
 
+const VIEW_LIST_ALIASES = new Set(["issues", "documents", "projects"]);
+
 function listHints(publicName, rowCount) {
-  if (rowCount > 0) return [`Run \`linear-axi ${publicName} list --fields ${fieldHint(publicName)}\` to choose fields`];
+  if (rowCount > 0) {
+    return [
+      `Run \`linear-axi ${publicName} list --fields ${fieldHint(publicName)}\` to choose fields`,
+      ...(VIEW_LIST_ALIASES.has(publicName)
+        ? [`Run \`linear-axi ${publicName} view <id>\` to read one ${publicName.slice(0, -1)} in full`]
+        : []),
+    ];
+  }
   const hints = EMPTY_LIST_HINTS[publicName] ?? [`Run \`linear-axi ${publicName} list --query "<text>"\` to search ${publicName}`];
   return [...hints];
 }

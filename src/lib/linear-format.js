@@ -116,9 +116,30 @@ export function compactProjectMutation(project) {
     id: project.id ?? "",
     name: project.name ?? "",
     status: projectStatus(project),
-    team: project.team?.name ?? project.teams?.[0]?.name ?? project.team ?? "",
+    team: projectTeam(project),
     url: project.url ?? "",
   };
+}
+
+export function compactProjectDetail(project, id) {
+  const preview = formattedPreview(String(project.description ?? ""), 1200);
+  return {
+    truncated: preview.truncated,
+    project: {
+      id: project.id ?? id ?? "",
+      name: project.name ?? "",
+      status: projectStatus(project),
+      summary: project.summary ?? "",
+      description: preview.text,
+      team: projectTeam(project),
+      url: project.url ?? "",
+    },
+  };
+}
+
+export function sanitizeProject(project, id) {
+  if (typeof project?.description !== "string") return project;
+  return { ...project, description: rewriteMcpHints(project.description, id ?? project.id, "project") };
 }
 
 export function compactLabelMutation(label) {
@@ -187,6 +208,10 @@ function projectStatus(project) {
   return project.status?.name ?? project.state?.name ?? project.status ?? project.state ?? "";
 }
 
+function projectTeam(project) {
+  return project.team?.name ?? project.teams?.[0]?.name ?? project.team ?? "";
+}
+
 function personName(person) {
   return person?.name ?? person?.displayName ?? person ?? "";
 }
@@ -244,7 +269,7 @@ function formattedPreview(value, limit) {
   };
 }
 
-function rewriteMcpHints(text, id) {
+function rewriteMcpHints(text, id, resource = "document") {
   const hintId = id ? formatCommandArg(id) : "<id>";
-  return text.replace(/use `get_document`/g, `run \`linear-axi documents view ${hintId} --full\``);
+  return text.replace(new RegExp(`use \`get_${resource}\``, "g"), `run \`linear-axi ${resource}s view ${hintId} --full\``);
 }
