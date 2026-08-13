@@ -314,7 +314,10 @@ test("projects list uses list_projects wrapper", async () => {
 
   assert.deepEqual(seen, { name: "list_projects", args: { query: "roadmap", limit: 50 } });
   assert.match(output, /projects\[3\]\{status,name,id\}:\n  In Progress,Roadmap,p-progress\n  Planned,Next,p-planned\n  Backlog,Later,p-backlog/);
-  assert.deepEqual(decode(output).help, ["Run `linear-axi projects list --fields id,name,status` to choose fields"]);
+  assert.deepEqual(decode(output).help, [
+    "Run `linear-axi projects list --fields id,name,status` to choose fields",
+    "Run `linear-axi projects view <id>` to read one project in full",
+  ]);
   assert.doesNotMatch(output, /--full/);
   assert.doesNotMatch(output, /--query "<text>"/);
 });
@@ -340,7 +343,7 @@ test("list commands support fields and pagination hints", async () => {
   assert.match(output, /projects\[1\]\{id,name,state\}:/);
   assert.match(output, /p1,Roadmap,started/);
   assert.doesNotMatch(output, /ignored/);
-  assert.match(output, /help\[2\]:/);
+  assert.match(output, /help\[3\]:/);
   assert.match(output, /Run `linear-axi projects list --limit 25 --query roadmap --fields 'id,name,state' --cursor next-page` to continue/);
 });
 
@@ -359,7 +362,7 @@ test("list pagination hints shell-escape unsafe values", async () => {
 
   assert.match(output, /cursor: next \$\(touch \/tmp\/cursor\)'\$TOKEN/);
   assert.equal(
-    decode(output).help[1],
+    decode(output).help.at(-1),
     "Run `linear-axi projects list --limit 25 --query 'roadmap $(touch /tmp/axi)'\\''$HOME' --cursor 'next $(touch /tmp/cursor)'\\''$TOKEN'` to continue",
   );
 });
@@ -2238,7 +2241,7 @@ test("projects update rejects a missing project from get_project before mutation
 
 test("resource group help points to focused subcommand help", async () => {
   const output = await run(["projects", "--help"], runtime({}));
-  assert.match(output, /subcommands\[3\]:\n  list, create, update/);
+  assert.match(output, /subcommands\[4\]:\n  list, view, create, update/);
   assert.match(output, /linear-axi projects <subcommand> --help/);
 
   const focused = await run(["projects", "create", "--help"], runtime({}));
@@ -2461,6 +2464,315 @@ test("mcp-shaped tools command is not public cli", async () => {
     () => run(["tools", "list"], runtime({})),
     /unknown command: tools/,
   );
+});
+
+test("projects view uses get_project and returns the full description", async () => {
+  const calls = [];
+  const description = "d".repeat(2000);
+  const output = await run(
+    ["projects", "view", "proj-1", "--full"],
+    runtime({
+      listTools: async () => [{ name: "get_project" }],
+      callTool: async (name, args) => {
+        calls.push({ name, args });
+        return { structuredContent: { id: "proj-1", name: "Roadmap", description } };
+      },
+    }),
+  );
+
+  assert.deepEqual(calls, [{ name: "get_project", args: { query: "proj-1" } }]);
+  assert.match(output, /name: Roadmap/);
+  assert.match(output, new RegExp(`description: ${description}`));
+  assert.doesNotMatch(output, /truncated/);
+});
+
+test("projects view compact output previews long descriptions", async () => {
+  const description = `${"a".repeat(1201)} tail`;
+  const output = await run(
+    ["projects", "view", "proj-1"],
+    runtime({
+      listTools: async () => [{ name: "get_project" }],
+      callTool: async () => ({
+        structuredContent: { id: "proj-1", name: "Roadmap", status: { name: "In Progress" }, description },
+      }),
+    }),
+  );
+
+  assert.match(output, /project:/);
+  assert.match(output, /status: In Progress/);
+  assert.match(output, /description: ".+\.\.\. \(truncated, 1206 chars total\)"/);
+  assert.deepEqual(decode(output).help, ["Run `linear-axi projects view proj-1 --full` to show the complete project"]);
+});
+
+test("projects view rewrites MCP-native truncation hints", async () => {
+  const output = await run(
+    ["projects", "view", "proj-1"],
+    runtime({
+      listTools: async () => [{ name: "get_project" }],
+      callTool: async () => ({
+        structuredContent: {
+          id: "proj-1",
+          name: "Roadmap",
+          description: "short preview (truncated, use `get_project` for full description)",
+        },
+      }),
+    }),
+  );
+
+  assert.match(output, /linear-axi projects view proj-1 --full/);
+  assert.doesNotMatch(output, /get_project/);
+});
+
+test("projects view missing project returns not found", async () => {
+  await assert.rejects(
+    () => run(
+      ["projects", "view", "p-404"],
+      runtime({
+        listTools: async () => [{ name: "get_project" }],
+        callTool: async () => ({ structuredContent: {} }),
+      }),
+    ),
+    (error) => {
+      assert.equal(error.kind, "not_found");
+      assert.equal(error.exitCode, 1);
+      assert.match(error.message, /project not found: p-404/);
+      return true;
+    },
+  );
+});
+
+test("projects group help lists view subcommand", async () => {
+  const output = await run(["projects", "--help"], runtime({}));
+
+  assert.match(output, /list, view, create, update/);
+});
+
+test("documents list resolves --project to a projectId filter", async () => {
+  const calls = [];
+  const output = await run(
+    ["documents", "list", "--project", "Roadmap"],
+    runtime({
+      listTools: async () => [{ name: "get_project" }, { name: "list_documents" }],
+      callTool: async (name, args) => {
+        calls.push({ name, args });
+        if (name === "get_project") {
+          return { structuredContent: { id: "proj-uuid", name: "Roadmap" } };
+        }
+        return { structuredContent: { documents: [{ id: "doc1", title: "Spec", updatedAt: "2026-08-01T00:00:00Z" }] } };
+      },
+    }),
+  );
+
+  assert.deepEqual(calls, [
+    { name: "get_project", args: { query: "Roadmap" } },
+    { name: "list_documents", args: { limit: 50, projectId: "proj-uuid" } },
+  ]);
+  assert.match(output, /Spec/);
+});
+
+test("documents list rejects an unknown --project before listing", async () => {
+  await assert.rejects(
+    () => run(
+      ["documents", "list", "--project", "Nope"],
+      runtime({
+        listTools: async () => [{ name: "get_project" }, { name: "list_documents" }],
+        callTool: async () => ({ structuredContent: {} }),
+      }),
+    ),
+    (error) => {
+      assert.equal(error.kind, "not_found");
+      assert.match(error.message, /project not found: Nope/);
+      return true;
+    },
+  );
+});
+
+test("list commands surface Linear tool errors instead of blank rows", async () => {
+  await assert.rejects(
+    () => run(
+      ["teams", "list"],
+      runtime({
+        callTool: async () => ({
+          structuredContent: { text: "Input validation error: Invalid arguments for tool list_teams: Invalid input" },
+        }),
+      }),
+    ),
+    (error) => {
+      assert.equal(error.kind, "operational");
+      assert.match(error.message, /Input validation error/);
+      return true;
+    },
+  );
+});
+
+test("issues create without a bound project suggests the team-level escape hatch", async () => {
+  const repo = await makeGitRepo();
+
+  await assert.rejects(
+    () => run(
+      ["issues", "create", "--title", "Task", "--team", "ENG"],
+      runtime({ cwd: repo, callTool: async () => ({}) }),
+    ),
+    (error) => {
+      assert.equal(error.kind, "usage");
+      assert.match(error.message, /No default Linear project is configured/);
+      assert.ok(
+        error.help.some((line) => line.includes('--project ""')),
+        `help should mention --project "": ${JSON.stringify(error.help)}`,
+      );
+      return true;
+    },
+  );
+});
+
+test("documents list reuses the validated repo project id instead of refetching it", async () => {
+  const repo = await makeGitRepo("Roadmap");
+  const calls = [];
+  await run(
+    ["documents", "list"],
+    runtime({
+      cwd: repo,
+      listTools: async () => [{ name: "get_project" }, { name: "list_projects" }, { name: "list_documents" }],
+      callTool: async (name, args) => {
+        calls.push({ name, args });
+        if (name === "get_project") return { structuredContent: { id: "proj-uuid", name: "Roadmap" } };
+        return { structuredContent: { documents: [] } };
+      },
+    }),
+  );
+
+  assert.deepEqual(calls, [
+    { name: "get_project", args: { query: "Roadmap" } },
+    { name: "list_documents", args: { limit: 50, projectId: "proj-uuid" } },
+  ]);
+});
+
+test("projects view refetches the list-matched project by id to escape truncation", async () => {
+  const calls = [];
+  const description = "d".repeat(2000);
+  const output = await run(
+    ["projects", "view", "API", "--full"],
+    runtime({
+      listTools: async () => [{ name: "get_project" }, { name: "list_projects" }],
+      callTool: async (name, args) => {
+        calls.push({ name, args });
+        if (name === "list_projects") {
+          return {
+            structuredContent: {
+              projects: [{ id: "proj-api", name: "API", description: "short (truncated, use `get_project` for full)" }],
+            },
+          };
+        }
+        if (args.query === "proj-api") {
+          return { structuredContent: { id: "proj-api", name: "API", description } };
+        }
+        return { structuredContent: { id: "proj-gateway", name: "API Gateway", description: "wrong project" } };
+      },
+    }),
+  );
+
+  assert.deepEqual(calls.map((call) => call.name), ["get_project", "list_projects", "get_project"]);
+  assert.deepEqual(calls.at(-1).args, { query: "proj-api" });
+  assert.match(output, new RegExp(`description: ${description}`));
+  assert.doesNotMatch(output, /may be truncated/);
+});
+
+test("projects view warns when the list fallback row cannot be refetched", async () => {
+  const output = await run(
+    ["projects", "view", "API", "--full"],
+    runtime({
+      listTools: async () => [{ name: "get_project" }, { name: "list_projects" }],
+      callTool: async (name, args) => {
+        if (name === "list_projects") {
+          return {
+            structuredContent: {
+              projects: [{ id: "proj-api", name: "API", description: "short (truncated, use `get_project` for full)" }],
+            },
+          };
+        }
+        if (args.query === "proj-api") return { structuredContent: {} };
+        return { structuredContent: { id: "proj-gateway", name: "API Gateway", description: "wrong project" } };
+      },
+    }),
+  );
+
+  assert.deepEqual(decode(output).help, [
+    "This project came from list results and may be truncated by the Linear MCP server",
+  ]);
+  assert.match(output, /use `get_project`/);
+  assert.doesNotMatch(output, /linear-axi projects view API --full/);
+});
+
+test("documents view warns when the list fallback row cannot be refetched", async () => {
+  const output = await run(
+    ["documents", "view", "Spec"],
+    runtime({
+      listTools: async () => [{ name: "list_documents" }],
+      callTool: async () => ({
+        structuredContent: {
+          documents: [{ id: "Spec", title: "Spec", content: "short (truncated, use `get_document` for full)" }],
+        },
+      }),
+    }),
+  );
+
+  assert.deepEqual(decode(output).help, [
+    "This document came from list results and may be truncated by the Linear MCP server",
+  ]);
+  assert.match(output, /use `get_document`/);
+  assert.doesNotMatch(output, /linear-axi documents view Spec --full/);
+});
+
+test("issues create with an empty --project omits the project from save_issue", async () => {
+  const repo = await makeGitRepo("Roadmap");
+  const calls = [];
+  await run(
+    ["issues", "create", "--title", "Task", "--team", "ENG", "--project", ""],
+    runtime({
+      cwd: repo,
+      callTool: async (name, args) => {
+        calls.push({ name, args });
+        return { structuredContent: { identifier: "LIN-1", title: "Task" } };
+      },
+    }),
+  );
+
+  assert.deepEqual(calls, [{ name: "save_issue", args: { title: "Task", team: "ENG" } }]);
+});
+
+test("issues update with an empty --project clears it with null", async () => {
+  const calls = [];
+  await run(
+    ["issues", "update", "--id", "LIN-1", "--project", ""],
+    runtime({
+      listTools: async () => [{ name: "get_issue" }],
+      callTool: async (name, args) => {
+        calls.push({ name, args });
+        return { structuredContent: { identifier: "LIN-1", title: "Task" } };
+      },
+    }),
+  );
+
+  assert.deepEqual(calls.at(-1), { name: "save_issue", args: { id: "LIN-1", project: null } });
+});
+
+test("unverified detail does not promise a complete resource behind --full", async () => {
+  const output = await run(
+    ["documents", "view", "Spec"],
+    runtime({
+      listTools: async () => [{ name: "list_documents" }],
+      callTool: async () => ({
+        structuredContent: {
+          documents: [{ id: "Spec", title: "Spec", content: "c".repeat(2000) }],
+        },
+      }),
+    }),
+  );
+
+  assert.deepEqual(decode(output).help, [
+    "This document came from list results and may be truncated by the Linear MCP server",
+    "Run `linear-axi documents view Spec --full` to show the full retrieved document",
+  ]);
 });
 
 async function waitFor(predicate) {

@@ -174,6 +174,16 @@ flags:
   --id <id>
 ${PROJECT_MUTATION_FIELDS_HELP}examples:
   linear-axi projects update --id <id> --summary "Updated scope"
+notes:
+  --description replaces the whole field; run \`linear-axi projects view <id>\` first to avoid losing content.
+`;
+}
+
+export function projectViewHelp() {
+  return `usage: linear-axi projects view <id> [--full]
+examples:
+  linear-axi projects view <id>
+  linear-axi projects view <id> --full
 `;
 }
 
@@ -308,7 +318,7 @@ const ISSUE_MUTATION_FIELDS_HELP = `  --title <title>
   --team <team>
   --state <state>
   --assignee <user>
-  --project <project>
+  --project <project> (empty string for no project)
   --cycle <cycle>
   --parentId <issue-id>
   --label <label> repeatable

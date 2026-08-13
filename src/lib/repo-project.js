@@ -11,6 +11,7 @@ export async function applyRepoProjectDefault(toolArgs, runtime, options = {}) {
     allProjects = false,
     allProjectsCommand,
     command,
+    noProjectHint,
     requireProject = false,
   } = options;
 
@@ -27,11 +28,11 @@ export async function applyRepoProjectDefault(toolArgs, runtime, options = {}) {
   if (repoProject) {
     const validated = await validateRepoProject(repoProject, runtime, { command });
     toolArgs.project = validated.project;
-    return;
+    return validated.projectId;
   }
 
   if (requireProject) {
-    throw usage("No default Linear project is configured for this repository", uninitializedProjectHelp(command, allProjectsCommand));
+    throw usage("No default Linear project is configured for this repository", uninitializedProjectHelp(command, allProjectsCommand, noProjectHint));
   }
 }
 
@@ -51,6 +52,7 @@ export async function validateRepoProject(repoProject, runtime, options = {}) {
   return {
     project: repoProject.project,
     ...(workspace ? { workspace } : {}),
+    ...(typeof match.id === "string" && match.id.trim() ? { projectId: match.id.trim() } : {}),
   };
 }
 
@@ -79,10 +81,11 @@ export async function readRepoProject(cwd) {
   return readProjectFile(join(repo, ".linear-project"));
 }
 
-function uninitializedProjectHelp(command, allProjectsCommand) {
+function uninitializedProjectHelp(command, allProjectsCommand, noProjectHint) {
   return [
     'Run `linear-axi init --project "<project>"` to bind this repo',
     ...(command ? [`Run \`${command} --project "<project>"\` to choose a project once`] : []),
+    ...(noProjectHint ? [noProjectHint] : []),
     ...(allProjectsCommand ? [`Run \`${allProjectsCommand}\` to list across all projects`] : []),
     "Run `linear-axi projects list` to find Linear projects",
   ];

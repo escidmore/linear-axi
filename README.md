@@ -96,6 +96,7 @@ linear-axi issues view LIN-123 --full
 linear-axi issues create --title "Fix auth" --team ENG --project "Roadmap"
 linear-axi issues update --id LIN-123 --state Done
 linear-axi projects list --query roadmap
+linear-axi projects view "Roadmap" --full
 ```
 
 ## Output behavior

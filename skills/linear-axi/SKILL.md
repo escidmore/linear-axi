@@ -27,7 +27,7 @@ Use linear-axi whenever a task touches Linear: listing, viewing, creating, or up
 
 1. Run `npx -y @escidmore/linear-axi` with no arguments for a dashboard of the current repo. Uninitialized repos show setup hints instead of workspace-wide issue counts.
 2. List Linear projects with `npx -y @escidmore/linear-axi projects list`, then bind a repository with `npx -y @escidmore/linear-axi init --project "<project>"`; this accepts a project id, name, or slug, validates the project, and stores discovered workspace metadata in `.linear-project`.
-3. Drill in command-first: `issues list`, `issues view <id>`, `projects list`, `documents view <id>`, `comments list --issue <id>`, and so on.
+3. Drill in command-first: `issues list`, `issues view <id>`, `projects list`, `projects view <id>`, `documents view <id>`, `comments list --issue <id>`, and so on.
 4. Add `--fields` for columns, `--cursor` for pagination, and `--full` only when complete content is needed.
 5. Linear operation responses include contextual next-step hints under `help:` when recovery or follow-up is useful - follow them.
 
