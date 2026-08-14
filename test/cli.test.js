@@ -890,7 +890,6 @@ test("repo project default applies to milestone creates and updates use explicit
 for (const [name, args] of [
   ["issues list", ["issues", "list", "--assignee", "me"]],
   ["documents list", ["documents", "list"]],
-  ["issues create", ["issues", "create", "--title", "Fix auth", "--team", "ENG"]],
   ["documents create", ["documents", "create", "--title", "Spec"]],
   ["milestones list", ["milestones", "list"]],
   ["milestones create", ["milestones", "create", "--name", "Beta"]],
@@ -2688,24 +2687,22 @@ test("list commands surface Linear tool errors instead of blank rows", async () 
   );
 });
 
-test("issues create without a bound project suggests the team-level escape hatch", async () => {
+test("issues create without a bound project omits the project", async () => {
   const repo = await makeGitRepo();
+  const calls = [];
 
-  await assert.rejects(
-    () => run(
-      ["issues", "create", "--title", "Task", "--team", "ENG"],
-      runtime({ cwd: repo, callTool: async () => ({}) }),
-    ),
-    (error) => {
-      assert.equal(error.kind, "usage");
-      assert.match(error.message, /No default Linear project is configured/);
-      assert.ok(
-        error.help.some((line) => line.includes('--project ""')),
-        `help should mention --project "": ${JSON.stringify(error.help)}`,
-      );
-      return true;
-    },
+  await run(
+    ["issues", "create", "--title", "Task", "--team", "ENG"],
+    runtime({
+      cwd: repo,
+      callTool: async (name, args) => {
+        calls.push({ name, args });
+        return { structuredContent: { identifier: "LIN-1", title: "Task" } };
+      },
+    }),
   );
+
+  assert.deepEqual(calls, [{ name: "save_issue", args: { title: "Task", team: "ENG" } }]);
 });
 
 test("documents list reuses the validated repo project id instead of refetching it", async () => {
