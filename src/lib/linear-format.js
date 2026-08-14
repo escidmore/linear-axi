@@ -18,6 +18,23 @@ const STATUS_RANKS = {
   backlog: 2,
 };
 const ISSUE_RELATION_FIELDS = ["blocks", "blockedBy", "relatedTo", "duplicateOf"];
+const FORMER_RELATION_FIELDS = {
+  blocks: "formerBlocks",
+  blockedBy: "formerBlockedBy",
+  relatedTo: "formerRelatedTo",
+};
+// Relation enrichment only carries status display names, never state types, so
+// "former" is a name heuristic; unrecognized done states stay in the active list.
+const FORMER_STATE_NAMES = new Set([
+  "done",
+  "canceled",
+  "cancelled",
+  "duplicate",
+  "completed",
+  "closed",
+  "resolved",
+  "merged",
+]);
 
 export function compactRows(alias, data) {
   if (alias === "issues") return compactIssues(data);
@@ -223,11 +240,27 @@ function namedValue(value) {
 
 function compactIssueRelations(relations) {
   if (!relations || typeof relations !== "object") return relations;
-  return Object.fromEntries(
-    ISSUE_RELATION_FIELDS
-      .filter((field) => Object.hasOwn(relations, field))
-      .map((field) => [field, compactRelationValue(relations[field])]),
-  );
+  const compacted = {};
+  for (const field of ISSUE_RELATION_FIELDS) {
+    if (!Object.hasOwn(relations, field)) continue;
+    const value = compactRelationValue(relations[field]);
+    const formerField = FORMER_RELATION_FIELDS[field];
+    if (!formerField || !Array.isArray(value)) {
+      compacted[field] = value;
+      continue;
+    }
+    const active = [];
+    const former = [];
+    for (const item of value) (isFormerRelation(item) ? former : active).push(item);
+    compacted[field] = active;
+    if (former.length > 0) compacted[formerField] = former;
+  }
+  return compacted;
+}
+
+function isFormerRelation(item) {
+  if (!item || typeof item !== "object") return false;
+  return FORMER_STATE_NAMES.has(statusLabel(item.status));
 }
 
 function compactRelationValue(value) {

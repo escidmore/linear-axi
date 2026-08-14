@@ -19,7 +19,7 @@ examples:
   linear-axi comments create --issue LIN-123 --body "Ready for review."
   linear-axi update --check
 notes:
-  issue views include relation ids, titles, and current statuses
+  issue views include relation ids, titles, and current statuses; done relations move to formerBlocks/formerBlockedBy/formerRelatedTo
 env[5]:
   LINEAR_AXI_MCP_URL, LINEAR_AXI_MCP_TOKEN, LINEAR_MCP_TOKEN, LINEAR_AXI_AUTH_FILE, CODEX_CONFIG
 `;

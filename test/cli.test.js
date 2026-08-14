@@ -1543,10 +1543,93 @@ test("issues view compact output includes relation statuses", async () => {
     { name: "get_issue", args: { id: "LIN-4" } },
     { name: "get_issue", args: { id: "LIN-5" } },
   ]);
-  assert.match(output, /blocks\[1\]\{id,title,status\}:\n      LIN-2,Blocked,Done/);
+  assert.match(output, /blocks: \[\]/);
+  assert.match(output, /formerBlocks\[1\]\{id,title,status\}:\n      LIN-2,Blocked,Done/);
   assert.match(output, /blockedBy\[1\]\{id,title,status\}:\n      LIN-3,Blocker,In Progress/);
   assert.match(output, /relatedTo\[1\]\{id,title,status\}:\n      LIN-4,Related,Backlog/);
   assert.match(output, /duplicateOf:\n      id: LIN-5\n      title: Original\n      status: Canceled/);
+  assert.doesNotMatch(output, /formerBlockedBy|formerRelatedTo/);
+});
+
+test("issues view compact output moves done relations to former lists", async () => {
+  const related = {
+    "LIN-2": { title: "Landed downstream", status: "Done" },
+    "LIN-3": { title: "Live blocker", status: "In Progress" },
+    "LIN-4": { title: "Old blocker", status: "Canceled" },
+    "LIN-5": { title: "Shipped blocker", status: "Resolved" },
+    "LIN-6": { title: "Live related", status: "Backlog" },
+    "LIN-7": { title: "Closed related", status: "Duplicate" },
+  };
+  const output = await run(
+    ["issues", "view", "LIN-1"],
+    runtime({
+      listTools: async () => [{ name: "get_issue" }],
+      callTool: async (name, args) => {
+        if (args.includeRelations) {
+          return {
+            structuredContent: {
+              identifier: "LIN-1",
+              title: "Right",
+              relations: {
+                blocks: [{ id: "LIN-2", title: "Landed downstream" }, "LIN-8"],
+                blockedBy: [
+                  { id: "LIN-3", title: "Live blocker" },
+                  { id: "LIN-4", title: "Old blocker" },
+                  { id: "LIN-5", title: "Shipped blocker" },
+                ],
+                relatedTo: [
+                  { id: "LIN-6", title: "Live related" },
+                  { id: "LIN-7", title: "Closed related" },
+                ],
+              },
+            },
+          };
+        }
+        const issue = related[args.id];
+        return { structuredContent: { id: args.id, ...issue } };
+      },
+    }),
+  );
+
+  assert.match(output, /blocks\[1\]: LIN-8/);
+  assert.match(output, /formerBlocks\[1\]\{id,title,status\}:\n      LIN-2,Landed downstream,Done/);
+  assert.match(output, /blockedBy\[1\]\{id,title,status\}:\n      LIN-3,Live blocker,In Progress/);
+  assert.match(output, /formerBlockedBy\[2\]\{id,title,status\}:\n      LIN-4,Old blocker,Canceled\n      LIN-5,Shipped blocker,Resolved/);
+  assert.match(output, /relatedTo\[1\]\{id,title,status\}:\n      LIN-6,Live related,Backlog/);
+  assert.match(output, /formerRelatedTo\[1\]\{id,title,status\}:\n      LIN-7,Closed related,Duplicate/);
+});
+
+test("issues view compact output keeps unrecognized done-state relations active", async () => {
+  const related = {
+    "LIN-2": { title: "Custom done state", status: "Shipped 🚀" },
+    "LIN-3": { title: "Known done state", status: "COMPLETED" },
+  };
+  const output = await run(
+    ["issues", "view", "LIN-1"],
+    runtime({
+      listTools: async () => [{ name: "get_issue" }],
+      callTool: async (name, args) => {
+        if (args.includeRelations) {
+          return {
+            structuredContent: {
+              identifier: "LIN-1",
+              title: "Right",
+              relations: {
+                blockedBy: [
+                  { id: "LIN-2", title: "Custom done state" },
+                  { id: "LIN-3", title: "Known done state" },
+                ],
+              },
+            },
+          };
+        }
+        return { structuredContent: { id: args.id, ...related[args.id] } };
+      },
+    }),
+  );
+
+  assert.match(output, /blockedBy\[1\]\{id,title,status\}:\n      LIN-2,Custom done state,Shipped 🚀/);
+  assert.match(output, /formerBlockedBy\[1\]\{id,title,status\}:\n      LIN-3,Known done state,COMPLETED/);
 });
 
 test("issues view missing issue returns not found", async () => {
