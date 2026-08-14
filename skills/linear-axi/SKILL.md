@@ -39,5 +39,6 @@ Run `npx -y @escidmore/linear-axi --help` for global flags, `npx -y @escidmore/l
 
 - Linear command output is TOON-encoded and token-efficient; pipe through grep/head only when a list is very long.
 - Default issue and project lists are grouped by status, show active work first, and keep ids last. Use `--fields` when you need a custom column order.
+- `issues view` lists done relations separately as `formerBlocks`, `formerBlockedBy`, and `formerRelatedTo`. Treat those as settled history and do not fetch them; only the `blocks`, `blockedBy`, and `relatedTo` lists are live work.
 - For multi-line markdown descriptions, comments, or documents, write the text to a UTF-8 file and pass `--description-file <path>`, `--body-file <path>`, or `--content-file <path>`.
 - Repository project defaults are validated before an issue, document, or milestone command uses them unless `--project <project>` overrides them. Use `--all-projects` on issue and document list commands only when a workspace-wide list is intended.

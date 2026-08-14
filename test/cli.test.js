@@ -1599,6 +1599,39 @@ test("issues view compact output moves done relations to former lists", async ()
   assert.match(output, /formerRelatedTo\[1\]\{id,title,status\}:\n      LIN-7,Closed related,Duplicate/);
 });
 
+test("issues view compact output keeps unrecognized done-state relations active", async () => {
+  const related = {
+    "LIN-2": { title: "Custom done state", status: "Shipped 🚀" },
+    "LIN-3": { title: "Known done state", status: "COMPLETED" },
+  };
+  const output = await run(
+    ["issues", "view", "LIN-1"],
+    runtime({
+      listTools: async () => [{ name: "get_issue" }],
+      callTool: async (name, args) => {
+        if (args.includeRelations) {
+          return {
+            structuredContent: {
+              identifier: "LIN-1",
+              title: "Right",
+              relations: {
+                blockedBy: [
+                  { id: "LIN-2", title: "Custom done state" },
+                  { id: "LIN-3", title: "Known done state" },
+                ],
+              },
+            },
+          };
+        }
+        return { structuredContent: { id: args.id, ...related[args.id] } };
+      },
+    }),
+  );
+
+  assert.match(output, /blockedBy\[1\]\{id,title,status\}:\n      LIN-2,Custom done state,Shipped 🚀/);
+  assert.match(output, /formerBlockedBy\[1\]\{id,title,status\}:\n      LIN-3,Known done state,COMPLETED/);
+});
+
 test("issues view missing issue returns not found", async () => {
   await assert.rejects(
     () => run(

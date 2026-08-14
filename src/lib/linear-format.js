@@ -23,6 +23,8 @@ const FORMER_RELATION_FIELDS = {
   blockedBy: "formerBlockedBy",
   relatedTo: "formerRelatedTo",
 };
+// Relation enrichment only carries status display names, never state types, so
+// "former" is a name heuristic; unrecognized done states stay in the active list.
 const FORMER_STATE_NAMES = new Set([
   "done",
   "canceled",
