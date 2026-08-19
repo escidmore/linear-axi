@@ -112,6 +112,7 @@ export function compactIssueDetail(issue) {
       assignee: personName(issue.assignee),
       description: preview.text,
       url: issue.url ?? "",
+      ...(issue.parent !== undefined ? { parent: fieldValue(issue, "parent") } : {}),
       ...(issue.relations !== undefined ? { relations: compactIssueRelations(issue.relations) } : {}),
     },
   };
@@ -125,6 +126,7 @@ export function compactIssueMutation(issue) {
     project: namedValue(issue.project),
     team: namedValue(issue.team),
     url: issue.url ?? "",
+    ...(issue.parent !== undefined ? { parent: fieldValue(issue, "parent") } : {}),
   };
 }
 

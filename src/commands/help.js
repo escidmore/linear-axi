@@ -72,7 +72,7 @@ flags:
   --project <project>
 ${projectScopeHelp}  --cycle <cycle>
   --label <label>
-  --parentId <issue-id>
+  --parent <issue-id> (alias: --parentId)
   --priority <number>
   --createdAt <filter>
   --updatedAt <filter>

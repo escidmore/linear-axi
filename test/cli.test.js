@@ -446,6 +446,26 @@ test("issues list uses list_issues wrapper with explicit all-projects", async ()
   assert.match(output, /issues\[3\]\{state,title,assignee,id\}:\n  In Progress,Fix auth,Morris,LIN-1\n  Planned,Plan release,Morris,LIN-3\n  Todo,Write docs,Morris,LIN-2/);
 });
 
+test("issues list passes parent filters to list_issues", async () => {
+  const calls = [];
+  for (const flag of ["--parent", "--parentId"]) {
+    await run(
+      ["issues", "list", "--all-projects", flag, "LIN-1"],
+      runtime({
+        callTool: async (name, args) => {
+          calls.push({ name, args });
+          return { structuredContent: { issues: [] } };
+        },
+      }),
+    );
+  }
+
+  assert.deepEqual(calls, [
+    { name: "list_issues", args: { parent: "LIN-1", limit: 50 } },
+    { name: "list_issues", args: { parent: "LIN-1", limit: 50 } },
+  ]);
+});
+
 test("all-projects bypasses repo default project for issue lists", async () => {
   const repo = await makeGitRepo("Roadmap");
 
@@ -813,6 +833,72 @@ test("issue create forwards blocking relations to save_issue", async () => {
   );
 
   assert.deepEqual(seen, { name: "save_issue", args: { title: "Fix auth", team: "ENG", project: "Roadmap", blockedBy: ["LIN-3"] } });
+});
+
+test("issue create and update resolve parent identifiers before save_issue", async () => {
+  const parent = { id: "parent-uuid", identifier: "LIN-2", title: "Parent" };
+  const child = { id: "child-uuid", identifier: "LIN-1", title: "Child" };
+
+  const createCalls = [];
+  await run(
+    ["issues", "create", "--title", "Child", "--team", "ENG", "--parentId", "LIN-2"],
+    runtime({
+      listTools: async () => [{ name: "get_issue" }],
+      callTool: async (name, args) => {
+        createCalls.push({ name, args });
+        if (name === "get_issue") return { structuredContent: parent };
+        return { structuredContent: child };
+      },
+    }),
+  );
+
+  assert.deepEqual(createCalls, [
+    { name: "get_issue", args: { id: "LIN-2", includeRelations: true } },
+    { name: "save_issue", args: { title: "Child", team: "ENG", parentId: "parent-uuid" } },
+  ]);
+
+  const updateCalls = [];
+  await run(
+    ["issues", "update", "--id", "LIN-1", "--parentId", "LIN-2"],
+    runtime({
+      listTools: async () => [{ name: "get_issue" }],
+      callTool: async (name, args) => {
+        updateCalls.push({ name, args });
+        if (name === "get_issue") return { structuredContent: args.id === "LIN-1" ? child : parent };
+        return { structuredContent: child };
+      },
+    }),
+  );
+
+  assert.deepEqual(updateCalls, [
+    { name: "get_issue", args: { id: "LIN-1", includeRelations: true } },
+    { name: "get_issue", args: { id: "LIN-2", includeRelations: true } },
+    { name: "save_issue", args: { id: "LIN-1", parentId: "parent-uuid" } },
+  ]);
+});
+
+test("issue parent resolution rejects missing parents before save_issue", async () => {
+  let saveCalled = false;
+
+  await assert.rejects(
+    () => run(
+      ["issues", "create", "--title", "Child", "--team", "ENG", "--parentId", "LIN-404"],
+      runtime({
+        listTools: async () => [{ name: "get_issue" }],
+        callTool: async (name) => {
+          if (name === "get_issue") return { structuredContent: {} };
+          saveCalled = true;
+          return { structuredContent: {} };
+        },
+      }),
+    ),
+    (error) => {
+      assert.equal(error.kind, "not_found");
+      assert.match(error.message, /issue not found: LIN-404/);
+      return true;
+    },
+  );
+  assert.equal(saveCalled, false);
 });
 
 test("repo project default applies to document creates but not updates", async () => {
@@ -1499,6 +1585,24 @@ test("issues view compact output exposes native relations", async () => {
   assert.match(output, /blockedBy\[1\]: LIN-3/);
   assert.match(output, /relatedTo\[1\]: issue-id/);
   assert.match(output, /duplicateOf: LIN-4/);
+});
+
+test("issues view compact output exposes the parent issue", async () => {
+  const output = await run(
+    ["issues", "view", "LIN-1"],
+    runtime({
+      listTools: async () => [{ name: "get_issue" }],
+      callTool: async () => ({
+        structuredContent: {
+          identifier: "LIN-1",
+          title: "Child",
+          parent: { id: "parent-uuid", identifier: "LIN-2", title: "Parent" },
+        },
+      }),
+    }),
+  );
+
+  assert.match(output, /parent: LIN-2/);
 });
 
 test("issues view compact output includes relation statuses", async () => {
