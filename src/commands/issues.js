@@ -1,8 +1,9 @@
-import { parseFlags, usage } from "../args.js";
+import { AxiError, parseFlags, usage } from "../args.js";
 import {
   applyTextFileFlag,
   collectKnownArgs,
   dispatchCommandGroup,
+  formatCommandArg,
   rejectIdOnCreate,
   requireValue,
 } from "../lib/cli-helpers.js";
@@ -106,6 +107,7 @@ async function createIssueCommand(args, runtime) {
   });
   if (toolArgs.project === "") delete toolArgs.project;
   requireValue(toolArgs.title && toolArgs.team, "creating an issue requires --title and --team", ISSUE_CREATE_HELP);
+  await resolveParentId(toolArgs, runtime);
   return saveIssue(toolArgs, runtime, [
     'Run `linear-axi issues create --title "Title" --team "<team>"`',
     "Run `linear-axi projects list --full` to confirm project/team compatibility",
@@ -120,6 +122,7 @@ async function updateIssueCommand(args, runtime) {
   if (toolArgs.project === "") toolArgs.project = null;
   requireValue(toolArgs.id, "updating an issue requires --id", ISSUE_UPDATE_HELP);
   await ensureIssueExists(toolArgs.id, runtime);
+  await resolveParentId(toolArgs, runtime);
   return saveIssue(toolArgs, runtime, ISSUE_UPDATE_HELP);
 }
 
@@ -132,6 +135,17 @@ async function issueToolArgs(parsed, runtime) {
     cwd: runtime.cwd,
   });
   return toolArgs;
+}
+
+async function resolveParentId(toolArgs, runtime) {
+  if (toolArgs.parentId === undefined) return;
+  const parent = await ensureIssueExists(toolArgs.parentId, runtime);
+  if (!parent.id) {
+    throw new AxiError("operational", `issue id unavailable for parent: ${toolArgs.parentId}`, [
+      `Run \`linear-axi issues view ${formatCommandArg(toolArgs.parentId)} --full\` to inspect the issue`,
+    ]);
+  }
+  toolArgs.parentId = parent.id;
 }
 
 async function saveIssue(toolArgs, runtime, help) {

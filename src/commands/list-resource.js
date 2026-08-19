@@ -56,6 +56,10 @@ export async function aliasListCommand(alias, args, runtime) {
     ]);
   }
   const toolArgs = collectKnownArgs(parsed, LIST_TOOL_ARG_FLAGS);
+  if (alias === "issues" && toolArgs.parentId !== undefined) {
+    toolArgs.parent ??= toolArgs.parentId;
+    delete toolArgs.parentId;
+  }
   if (!("limit" in toolArgs)) toolArgs.limit = DEFAULT_LIMIT;
   let repoProjectId;
   if (PROJECT_SCOPED_LIST_ALIASES.includes(alias)) {

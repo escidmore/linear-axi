@@ -39,6 +39,7 @@ export const LIST_TOOL_ARG_FLAGS = [
   "member",
   "name",
   "orderBy",
+  "parent",
   "parentId",
   "priority",
   "project",
