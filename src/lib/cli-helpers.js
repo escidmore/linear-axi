@@ -6,8 +6,6 @@ export const TOOL_BOOLEAN_FLAGS = [
   "includeArchived",
   "includeMembers",
   "includeMilestones",
-  "includeStages",
-  "includeTeams",
 ];
 
 export function appendContinuationHelp(help, baseCommand, parsed, flagNames, cursor) {
@@ -41,6 +39,19 @@ export function rejectIdOnCreate(resource, help, parsed) {
     const article = /^[aeiou]/i.test(resource) ? "an" : "a";
     throw usage(`creating ${article} ${resource} does not accept --id`, help);
   }
+}
+
+export function rejectUnknownInput(parsed, acceptedFlags, help) {
+  const unknownFlag = Object.keys(parsed).find((name) => name !== "positionals" && !acceptedFlags.includes(name));
+  if (unknownFlag) throw usage(`unknown flag --${unknownFlag}`, help);
+  if (parsed.positionals.length > 0) throw usage(`unexpected argument: ${parsed.positionals[0]}`, help);
+}
+
+export function validFlagsHelp(command, flags) {
+  return [
+    `Valid flags: ${flags.map((name) => `--${name}`).join(", ")}`,
+    `Run \`${command} --help\` for usage`,
+  ];
 }
 
 export function requireValue(value, message, help) {

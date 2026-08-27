@@ -28,35 +28,14 @@ export const LIST_BOOLEAN_FLAGS = [
   ...TOOL_BOOLEAN_FLAGS,
 ];
 
-export const LIST_TOOL_ARG_FLAGS = [
-  "assignee",
-  "createdAt",
-  "cursor",
-  "cycle",
-  "delegate",
-  "label",
-  "limit",
-  "member",
-  "name",
-  "orderBy",
-  "parent",
-  "parentId",
-  "priority",
-  "project",
-  "query",
-  "state",
-  "team",
-  "teamId",
-  "updatedAt",
-  ...TOOL_BOOLEAN_FLAGS,
-];
-
-export const LIST_CONTINUATION_FLAGS = [
-  ...LIST_TOOL_ARG_FLAGS.filter((name) => name !== "cursor"),
-  "fields",
-  "full",
-  "all-projects",
-];
+export const LIST_TOOL_ARG_FLAGS = {
+  issues: ["limit", "cursor", "query", "team", "state", "cycle", "label", "assignee", "delegate", "project", "release", "priority", "parentId", "createdAt", "updatedAt", "orderBy", "includeArchived"],
+  projects: ["limit", "cursor", "query", "state", "initiative", "team", "member", "label", "createdAt", "updatedAt", "orderBy", "includeMilestones", "includeMembers", "includeArchived"],
+  teams: ["limit", "cursor", "query", "createdAt", "updatedAt", "orderBy", "includeArchived"],
+  users: ["limit", "cursor", "query", "team", "orderBy"],
+  documents: ["limit", "cursor", "query", "project", "initiativeId", "teamId", "creatorId", "createdAt", "updatedAt", "orderBy", "includeArchived"],
+  labels: ["limit", "cursor", "name", "team", "orderBy"],
+};
 
 const ISSUE_RELATION_FIELDS = ["blocks", "blockedBy", "relatedTo", "duplicateOf"];
 
@@ -219,6 +198,7 @@ async function getDetailWithListFallback(runtime, options) {
   const knownToolNames = options.requireKnownDetailTool
     ? new Set((typeof runtime.client.listTools === "function" ? await runtime.client.listTools() : []).map((tool) => tool.name))
     : null;
+  let detailToolUnavailable = false;
   const hasListTool = () => knownToolNames
     ? knownToolNames.has(options.listTool)
     : hasTool(runtime, options.listTool);
@@ -238,21 +218,21 @@ async function getDetailWithListFallback(runtime, options) {
       }
     } catch (error) {
       if (!isUnknownToolError(error)) throw error;
+      detailToolUnavailable = true;
     }
   }
 
   const listed = await runtime.client.callTool(options.listTool, options.listArgs);
   const match = asArray(extractData(listed)).find(options.matches);
   if (!match) return null;
-  const refetched = await refetchDetailById(runtime, options, match, knownToolNames);
+  const refetched = detailToolUnavailable ? null : await refetchDetailById(runtime, options, match, knownToolNames);
   return refetched ? detailResult(refetched, options) : markUnverified(match);
 }
 
 async function refetchDetailById(runtime, options, match, knownToolNames) {
   const id = typeof match.id === "string" ? match.id.trim() : "";
   if (!id) return null;
-  const known = knownToolNames ? knownToolNames.has(options.detailTool) : await hasTool(runtime, options.detailTool);
-  if (!known) return null;
+  if (!knownToolNames.has(options.detailTool)) return null;
   try {
     const data = extractData(await runtime.client.callTool(options.detailTool, {
       ...options.detailArgs,
