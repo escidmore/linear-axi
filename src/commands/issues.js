@@ -23,6 +23,7 @@ import {
 import { aliasListCommand } from "./list-resource.js";
 import {
   ensureIssueExists,
+  isUnverifiedDetail,
   renderDetailView,
   renderMutation,
 } from "./shared.js";
@@ -129,7 +130,7 @@ async function updateIssueCommand(args, runtime) {
   if (toolArgs.project === "") toolArgs.project = null;
   requireValue(toolArgs.id, "updating an issue requires --id", ISSUE_UPDATE_HELP);
   const issue = await ensureIssueExists(toolArgs.id, runtime);
-  applyRemovedLabels(toolArgs, parsed.removeLabel, issue.labels);
+  applyRemovedLabels(toolArgs, parsed.removeLabel, issue);
   await resolveParentId(toolArgs, runtime);
   return saveIssue(toolArgs, runtime, ISSUE_UPDATE_HELP);
 }
@@ -145,10 +146,14 @@ async function issueToolArgs(parsed, runtime) {
   return toolArgs;
 }
 
-function applyRemovedLabels(toolArgs, labelsToRemove, currentLabels) {
+function applyRemovedLabels(toolArgs, labelsToRemove, issue) {
   if (!labelsToRemove) return;
-  const labels = toolArgs.labels ?? currentLabels;
-  if (!Array.isArray(labels)) {
+  if (labelsToRemove.some((value) => !normalizeLabel(value))) {
+    throw usage("--removeLabel requires a label name or id", ISSUE_UPDATE_HELP);
+  }
+  const explicit = toolArgs.labels !== undefined;
+  const labels = toolArgs.labels ?? issue?.labels;
+  if (!Array.isArray(labels) || (!explicit && isUnverifiedDetail(issue))) {
     throw new AxiError("operational", "issue labels unavailable; cannot remove labels safely", [
       `Run \`linear-axi issues view ${formatCommandArg(toolArgs.id)} --full\` to inspect the current labels`,
     ]);
@@ -157,7 +162,7 @@ function applyRemovedLabels(toolArgs, labelsToRemove, currentLabels) {
   toolArgs.labels = labels
     .filter((label) => !labelReferences(label).some((value) => removals.has(normalizeLabel(value))))
     .map((label) => {
-      const value = typeof label === "string" ? label : label?.name ?? label?.id;
+      const value = typeof label === "string" ? label : label?.id ?? label?.name;
       if (typeof value !== "string" || !value.trim()) {
         throw new AxiError("operational", "issue labels could not be read safely");
       }

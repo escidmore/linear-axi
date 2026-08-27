@@ -893,8 +893,71 @@ test("issue update removes selected labels while preserving the rest", async () 
 
   assert.deepEqual(calls.at(-1), {
     name: "save_issue",
-    args: { id: "LIN-1", labels: ["Bug"] },
+    args: { id: "LIN-1", labels: ["label-3"] },
   });
+});
+
+test("issue update refuses to remove labels from an unverified detail", async () => {
+  const calls = [];
+  await assert.rejects(
+    () => run(
+      ["issues", "update", "--id", "LIN-1", "--removeLabel", "Bug"],
+      runtime({
+        listTools: async () => [{ name: "list_issues" }],
+        callTool: async (name, args) => {
+          calls.push({ name, args });
+          if (name === "get_issue") throw new Error("Tool get_issue not found");
+          if (name === "list_issues") {
+            return {
+              structuredContent: [
+                { identifier: "LIN-1", title: "Fix auth", labels: [{ id: "label-3", name: "Bug" }] },
+              ],
+            };
+          }
+          return { structuredContent: { identifier: "LIN-1", title: "Fix auth" } };
+        },
+      }),
+    ),
+    (error) => {
+      assert.equal(error.kind, "operational");
+      assert.match(error.message, /issue labels unavailable/);
+      return true;
+    },
+  );
+
+  assert.equal(calls.some((call) => call.name === "save_issue"), false);
+});
+
+test("issue update rejects a blank --removeLabel value", async () => {
+  const calls = [];
+  await assert.rejects(
+    () => run(
+      ["issues", "update", "--id", "LIN-1", "--removeLabel", "  "],
+      runtime({
+        listTools: async () => [{ name: "get_issue" }],
+        callTool: async (name, args) => {
+          calls.push({ name, args });
+          if (name === "get_issue") {
+            return {
+              structuredContent: {
+                identifier: "LIN-1",
+                title: "Fix auth",
+                labels: [{ id: "label-1" }, { id: "label-2", name: "Bug" }],
+              },
+            };
+          }
+          return { structuredContent: { identifier: "LIN-1", title: "Fix auth" } };
+        },
+      }),
+    ),
+    (error) => {
+      assert.equal(error.code, "VALIDATION_ERROR");
+      assert.match(error.message, /--removeLabel requires a label name or id/);
+      return true;
+    },
+  );
+
+  assert.equal(calls.some((call) => call.name === "save_issue"), false);
 });
 
 test("issue subcommands reject unknown flags before MCP calls", async () => {

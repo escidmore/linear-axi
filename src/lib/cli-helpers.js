@@ -6,8 +6,6 @@ export const TOOL_BOOLEAN_FLAGS = [
   "includeArchived",
   "includeMembers",
   "includeMilestones",
-  "includeStages",
-  "includeTeams",
 ];
 
 export function appendContinuationHelp(help, baseCommand, parsed, flagNames, cursor) {
