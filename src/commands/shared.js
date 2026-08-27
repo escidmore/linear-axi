@@ -232,8 +232,7 @@ async function getDetailWithListFallback(runtime, options) {
 async function refetchDetailById(runtime, options, match, knownToolNames) {
   const id = typeof match.id === "string" ? match.id.trim() : "";
   if (!id) return null;
-  const known = knownToolNames ? knownToolNames.has(options.detailTool) : await hasTool(runtime, options.detailTool);
-  if (!known) return null;
+  if (!knownToolNames.has(options.detailTool)) return null;
   try {
     const data = extractData(await runtime.client.callTool(options.detailTool, {
       ...options.detailArgs,
