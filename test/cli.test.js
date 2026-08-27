@@ -555,10 +555,17 @@ test("documents list all-projects bypasses repo default project", async () => {
 });
 
 test("all-projects is rejected for non project-scoped lists", async () => {
-  await assert.rejects(
-    () => run(["projects", "list", "--all-projects"], runtime({})),
-    /--all-projects is only supported for issues and documents/,
-  );
+  for (const alias of ["projects", "teams", "users", "labels"]) {
+    await assert.rejects(
+      () => run([alias, "list", "--all-projects"], runtime({})),
+      (error) => {
+        assert.equal(error.code, "VALIDATION_ERROR");
+        assert.match(error.message, /unknown flag --all-projects/);
+        assert.match(error.help[0], /Valid flags:/);
+        return true;
+      },
+    );
+  }
 });
 
 test("init saves repo project and issues list uses it by default", async () => {

@@ -1,4 +1,4 @@
-import { parseFlags, usage } from "../args.js";
+import { parseFlags } from "../args.js";
 import { renderToon } from "../format.js";
 import {
   appendContinuationHelp,
@@ -52,12 +52,6 @@ export async function aliasListCommand(alias, args, runtime) {
   const parsed = parseFlags(args, { boolean: ["help", ...LIST_BOOLEAN_FLAGS], example: `${alias} list --limit ${DEFAULT_LIMIT}` });
   if (parsed.help) return listAliasHelp(alias);
   const projectScoped = PROJECT_SCOPED_LIST_ALIASES.includes(alias);
-  if (parsed["all-projects"] && !projectScoped) {
-    throw usage("--all-projects is only supported for issues and documents", [
-      "Run `linear-axi issues list --all-projects`",
-      "Run `linear-axi documents list --all-projects`",
-    ]);
-  }
   const acceptedFlags = [...toolArgFlags, "fields", "full", ...(projectScoped ? ["all-projects"] : []), ...(alias === "issues" ? ["parent"] : [])];
   rejectUnknownInput(parsed, acceptedFlags, validFlagsHelp(`linear-axi ${alias} list`, acceptedFlags));
   const toolArgs = collectKnownArgs(parsed, toolArgFlags);
