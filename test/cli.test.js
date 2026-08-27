@@ -461,9 +461,54 @@ test("issues list passes parent filters to list_issues", async () => {
   }
 
   assert.deepEqual(calls, [
-    { name: "list_issues", args: { parent: "LIN-1", limit: 50 } },
-    { name: "list_issues", args: { parent: "LIN-1", limit: 50 } },
+    { name: "list_issues", args: { parentId: "LIN-1", limit: 50 } },
+    { name: "list_issues", args: { parentId: "LIN-1", limit: 50 } },
   ]);
+});
+
+test("list help only advertises filters accepted by each Linear tool", async () => {
+  const documents = await run(["documents", "list", "--help"], runtime({}));
+  assert.match(documents, /--project/);
+  assert.match(documents, /--creatorId/);
+  assert.doesNotMatch(documents, /--assignee|--state|--label/);
+
+  const teams = await run(["teams", "list", "--help"], runtime({}));
+  assert.match(teams, /--query/);
+  assert.match(teams, /--includeArchived/);
+  assert.doesNotMatch(teams, /--team |--state|--name/);
+
+  const users = await run(["users", "list", "--help"], runtime({}));
+  assert.match(users, /--query/);
+  assert.match(users, /--team/);
+  assert.doesNotMatch(users, /--assignee|--state|--includeArchived/);
+
+  const labels = await run(["labels", "list", "--help"], runtime({}));
+  assert.match(labels, /--name/);
+  assert.match(labels, /--team/);
+  assert.doesNotMatch(labels, /--query|--state|--includeArchived/);
+});
+
+test("list commands reject filters their Linear tools do not accept", async () => {
+  for (const args of [
+    ["documents", "list", "--assignee", "me"],
+    ["teams", "list", "--state", "active"],
+    ["users", "list", "--includeArchived"],
+    ["labels", "list", "--query", "Bug"],
+    ["projects", "list", "--assignee", "me"],
+  ]) {
+    let called = false;
+    await assert.rejects(
+      () => run(args, runtime({ callTool: async () => { called = true; } })),
+      (error) => {
+        assert.equal(error.kind, "usage");
+        assert.equal(error.code, "VALIDATION_ERROR");
+        assert.match(error.message, /unknown flag/);
+        assert.match(error.help[0], /Valid flags:/);
+        return true;
+      },
+    );
+    assert.equal(called, false);
+  }
 });
 
 test("all-projects bypasses repo default project for issue lists", async () => {
@@ -818,6 +863,60 @@ test("issue update forwards blocking relations to save_issue", async () => {
     args: { id: "LIN-1", blocks: ["LIN-2"], blockedBy: ["LIN-3", "LIN-4"], relatedTo: ["LIN-6"], duplicateOf: "LIN-7", removeBlockedBy: ["LIN-5"], removeRelatedTo: ["LIN-8"] },
   });
   assert.doesNotMatch(output, /help\[/);
+});
+
+test("issue update removes selected labels while preserving the rest", async () => {
+  const calls = [];
+  await run(
+    ["issues", "update", "--id", "LIN-1", "--removeLabel", "ready-for-agent", "--removeLabel", "label-2"],
+    runtime({
+      listTools: async () => [{ name: "get_issue" }],
+      callTool: async (name, args) => {
+        calls.push({ name, args });
+        if (name === "get_issue") {
+          return {
+            structuredContent: {
+              identifier: "LIN-1",
+              title: "Fix auth",
+              labels: [
+                { id: "label-1", name: "Ready-For-Agent" },
+                { id: "label-2", name: "Needs docs" },
+                { id: "label-3", name: "Bug" },
+              ],
+            },
+          };
+        }
+        return { structuredContent: { identifier: "LIN-1", title: "Fix auth" } };
+      },
+    }),
+  );
+
+  assert.deepEqual(calls.at(-1), {
+    name: "save_issue",
+    args: { id: "LIN-1", labels: ["Bug"] },
+  });
+});
+
+test("issue subcommands reject unknown flags before MCP calls", async () => {
+  for (const args of [
+    ["issues", "list", "--all-projects", "--assigneee", "me"],
+    ["issues", "view", "LIN-1", "--ful", "true"],
+    ["issues", "create", "--title", "Task", "--team", "ENG", "--colour", "red"],
+    ["issues", "update", "--id", "LIN-1", "--remove-label", "Bug"],
+  ]) {
+    let called = false;
+    await assert.rejects(
+      () => run(args, runtime({ callTool: async () => { called = true; } })),
+      (error) => {
+        assert.equal(error.kind, "usage");
+        assert.equal(error.code, "VALIDATION_ERROR");
+        assert.match(error.message, /unknown flag/);
+        assert.match(error.help[0], /Valid flags:/);
+        return true;
+      },
+    );
+    assert.equal(called, false);
+  }
 });
 
 test("issue create forwards blocking relations to save_issue", async () => {
@@ -1774,10 +1873,14 @@ test("issues view treats blank issue-shaped responses as not found", async () =>
 
 test("issues view falls back to exact list match when get_issue is unavailable", async () => {
   const calls = [];
+  let listToolsCalls = 0;
   const output = await run(
     ["issues", "view", "LIN-1", "--full"],
     runtime({
-      listTools: async () => [{ name: "list_issues" }],
+      listTools: async () => {
+        listToolsCalls += 1;
+        return [{ name: "list_issues" }];
+      },
       callTool: async (name, args) => {
         calls.push({ name, args });
         return {
@@ -1795,6 +1898,7 @@ test("issues view falls back to exact list match when get_issue is unavailable",
   assert.deepEqual(calls, [
     { name: "list_issues", args: { query: "LIN-1", limit: 10 } },
   ]);
+  assert.equal(listToolsCalls, 1);
   assert.match(output, /title: Right/);
   assert.doesNotMatch(output, /Wrong/);
 });
@@ -2441,6 +2545,8 @@ test("resource group help points to focused subcommand help", async () => {
   const issueUpdate = await run(["issues", "update", "--help"], runtime({}));
   assert.match(issueUpdate, /--id/);
   assert.match(issueUpdate, /--state/);
+  assert.match(issueUpdate, /--label <label> repeatable \(sets the full label set\)/);
+  assert.match(issueUpdate, /--removeLabel/);
 });
 
 test("statuses list uses issue status tool", async () => {

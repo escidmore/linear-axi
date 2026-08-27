@@ -4,6 +4,8 @@ import {
   appendContinuationHelp,
   collectKnownArgs,
   dispatchCommandGroup,
+  rejectUnknownInput,
+  validFlagsHelp,
 } from "../lib/cli-helpers.js";
 import {
   compactRows,
@@ -19,7 +21,6 @@ import {
   DEFAULT_LIMIT,
   LIST_BOOLEAN_FLAGS,
   LIST_TOOL_ARG_FLAGS,
-  LIST_CONTINUATION_FLAGS,
   LIST_TOOL_ALIASES,
   PROJECT_SCOPED_LIST_ALIASES,
   ensureProjectExists,
@@ -47,22 +48,23 @@ export async function listResourceCommand(alias, args, runtime) {
 
 export async function aliasListCommand(alias, args, runtime) {
   const toolNames = LIST_TOOL_ALIASES[alias];
+  const toolArgFlags = LIST_TOOL_ARG_FLAGS[alias];
   const parsed = parseFlags(args, { boolean: ["help", ...LIST_BOOLEAN_FLAGS], example: `${alias} list --limit ${DEFAULT_LIMIT}` });
   if (parsed.help) return listAliasHelp(alias);
-  if (parsed["all-projects"] && !PROJECT_SCOPED_LIST_ALIASES.includes(alias)) {
+  const projectScoped = PROJECT_SCOPED_LIST_ALIASES.includes(alias);
+  if (parsed["all-projects"] && !projectScoped) {
     throw usage("--all-projects is only supported for issues and documents", [
       "Run `linear-axi issues list --all-projects`",
       "Run `linear-axi documents list --all-projects`",
     ]);
   }
-  const toolArgs = collectKnownArgs(parsed, LIST_TOOL_ARG_FLAGS);
-  if (alias === "issues" && toolArgs.parentId !== undefined) {
-    toolArgs.parent ??= toolArgs.parentId;
-    delete toolArgs.parentId;
-  }
+  const acceptedFlags = [...toolArgFlags, "fields", "full", ...(projectScoped ? ["all-projects"] : []), ...(alias === "issues" ? ["parent"] : [])];
+  rejectUnknownInput(parsed, acceptedFlags, validFlagsHelp(`linear-axi ${alias} list`, acceptedFlags));
+  const toolArgs = collectKnownArgs(parsed, toolArgFlags);
+  if (alias === "issues" && parsed.parent !== undefined) toolArgs.parentId ??= parsed.parent;
   if (!("limit" in toolArgs)) toolArgs.limit = DEFAULT_LIMIT;
   let repoProjectId;
-  if (PROJECT_SCOPED_LIST_ALIASES.includes(alias)) {
+  if (projectScoped) {
     repoProjectId = await applyRepoProjectDefault(toolArgs, runtime, {
       allProjects: Boolean(parsed["all-projects"]),
       allProjectsCommand: `linear-axi ${alias} list --all-projects`,
@@ -88,7 +90,7 @@ export async function aliasListCommand(alias, args, runtime) {
   const rowCount = dataRows.length;
   const page = paginationInfo(data, rowCount);
   const help = listHints(alias, rowCount);
-  appendContinuationHelp(help, `linear-axi ${alias} list`, parsed, LIST_CONTINUATION_FLAGS, page.cursor);
+  appendContinuationHelp(help, `linear-axi ${alias} list`, parsed, acceptedFlags.filter((name) => name !== "cursor"), page.cursor);
   return renderToon({
     count: page.count,
     ...(page.cursor ? { cursor: page.cursor } : {}),

@@ -1,5 +1,5 @@
 import { fieldHint } from "../lib/linear-format.js";
-import { DEFAULT_LIMIT, PROJECT_SCOPED_LIST_ALIASES } from "./shared.js";
+import { DEFAULT_LIMIT, LIST_TOOL_ARG_FLAGS, PROJECT_SCOPED_LIST_ALIASES } from "./shared.js";
 
 export function topHelp() {
   return `usage: linear-axi [command] [args] [flags]
@@ -48,10 +48,13 @@ help:
 
 export function listAliasHelp(alias) {
   const projectScopedList = PROJECT_SCOPED_LIST_ALIASES.includes(alias);
-  const projectScopeHelp = projectScopedList
-    ? `  --all-projects
-`
-    : "";
+  const toolFlags = LIST_TOOL_ARG_FLAGS[alias];
+  const flagHelp = toolFlags.map((name) => `  ${LIST_FLAG_HELP[name]}`).join("\n");
+  const searchExample = toolFlags.includes("query")
+    ? '--query "auth"'
+    : toolFlags.includes("name")
+      ? '--name "Bug"'
+      : "--limit 25";
   const projectScopeNote = projectScopedList
     ? `notes:
   issues and documents require a valid repo default project from .linear-project, --project, or --all-projects.
@@ -59,37 +62,43 @@ export function listAliasHelp(alias) {
     : "";
   return `usage: linear-axi ${alias} list [filters] [--full]
 flags:
-  --limit <n> default ${DEFAULT_LIMIT}
-  --cursor <cursor>
-  --query <text>
-  --name <name>
-  --team <name-or-id>
-  --teamId <team-id>
-  --state <name-or-type>
-  --assignee <user>
-  --delegate <user>
-  --member <user>
-  --project <project>
-${projectScopeHelp}  --cycle <cycle>
-  --label <label>
-  --parent <issue-id> (alias: --parentId)
-  --priority <number>
-  --createdAt <filter>
-  --updatedAt <filter>
-  --orderBy createdAt|updatedAt
-  --includeArchived
-  --includeMembers
-  --includeMilestones
-  --includeStages
-  --includeTeams
-  --fields <comma-separated-fields>
+${flagHelp}
+${projectScopedList ? "  --all-projects\n" : ""}  --fields <comma-separated-fields>
   --full
 examples:
   linear-axi ${alias} list ${projectScopedList ? "--all-projects " : ""}--limit 25
   linear-axi ${alias} list --fields ${fieldHint(alias)}
-  linear-axi ${alias} list --query "auth" --full
+  linear-axi ${alias} list ${searchExample} --full
 ${projectScopeNote}`;
 }
+
+const LIST_FLAG_HELP = {
+  assignee: "--assignee <user>",
+  createdAt: "--createdAt <filter>",
+  creatorId: "--creatorId <user-id>",
+  cursor: "--cursor <cursor>",
+  cycle: "--cycle <cycle>",
+  delegate: "--delegate <user>",
+  includeArchived: "--includeArchived",
+  includeMembers: "--includeMembers",
+  includeMilestones: "--includeMilestones",
+  initiative: "--initiative <initiative>",
+  initiativeId: "--initiativeId <initiative-id>",
+  label: "--label <label>",
+  limit: `--limit <n> default ${DEFAULT_LIMIT}`,
+  member: "--member <user>",
+  name: "--name <name>",
+  orderBy: "--orderBy createdAt|updatedAt",
+  parentId: "--parentId <issue-id> (alias: --parent)",
+  priority: "--priority <number>",
+  project: "--project <project>",
+  query: "--query <text>",
+  release: "--release <release>",
+  state: "--state <name-or-type>",
+  team: "--team <name-or-id>",
+  teamId: "--teamId <team-id>",
+  updatedAt: "--updatedAt <filter>",
+};
 
 export function commentListHelp() {
   return `usage: linear-axi comments list --issue <id> [--full]
@@ -321,7 +330,7 @@ const ISSUE_MUTATION_FIELDS_HELP = `  --title <title>
   --project <project> (empty string for no project)
   --cycle <cycle>
   --parentId <issue-id>
-  --label <label> repeatable
+  --label <label> repeatable (sets the full label set)
   --priority <number>
   --estimate <number>
   --dueDate <yyyy-mm-dd>
@@ -349,6 +358,7 @@ flags:
 ${ISSUE_MUTATION_FIELDS_HELP}  --removeBlocks <issue> repeatable
   --removeBlockedBy <issue> repeatable
   --removeRelatedTo <issue> repeatable
+  --removeLabel <label> repeatable
 examples:
   linear-axi issues update --id LIN-123 --state Done
   linear-axi issues update --id LIN-123 --blockedBy LIN-100 --blockedBy LIN-101
